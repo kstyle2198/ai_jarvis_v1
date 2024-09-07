@@ -65,10 +65,10 @@ def make_vectordb(context):
     docs = text_splitter.split_text(context)
     embeddings_model = OpenAIEmbeddings()
     vectorstore = Chroma.from_texts(docs, embeddings_model)
-    return vectorstore
+    retriever = vectorstore.as_retriever()
+    return retriever
 
-def rag_chat(query, vectordb, model_name):
-    retriever = vectordb.as_retriever()
+def rag_chat(query, retriever, model_name):
     system_prompt = (
     "You are an assistant for question-answering tasks. "
     "Use the following pieces of retrieved context to answer "
@@ -116,7 +116,7 @@ if "rag_messages" not in st.session_state:
 
 if "chat_history" not in st.session_state: st.session_state.chat_history = ""
 if "model_name" not in st.session_state: st.session_state.model_name = ""
-if "vectorstore" not in st.session_state: st.session_state.vectorstore = ""
+if "retriever" not in st.session_state: st.session_state.retriever = ""
 if "retrieval_docs" not in st.session_state: st.session_state.retrieval_docs = ""
 
 
@@ -189,20 +189,24 @@ if __name__ == "__main__":
             context_input = st.text_area("Reference Knowledge",example_text, height=200)
             with st.spinner("Processing.."):
                 if st.button("Create VectorStore"):
-                    st.session_state.vectorstore = make_vectordb(context_input)
+                    st.session_state.retriever = make_vectordb(context_input)
                     st.info("VectorStore is created")
-            if st.session_state.vectorstore:
-                st.session_state.vectorstore
+            if st.session_state.retriever:
+                st.session_state.retriever
 
         text_input2 = st.chat_input("Say something")
         if text_input2:
+            st.session_state.chat_history = st.session_state.chat_history + "\n" + text_input2 + "\n"
             start_time = datetime.now()
             st.session_state.rag_messages.append({"role": "user", "content": text_input2})
-            retrieval_docs, output2 = rag_chat(text_input2, st.session_state.vectorstore, st.session_state.model_name)
+
+            retrieval_docs, output2 = rag_chat(text_input2, st.session_state.retriever, st.session_state.model_name)
+
             st.session_state.rag_messages.append({"role": "assistant", "content": output2})
             st.session_state.retrieval_docs = retrieval_docs
             end_time = datetime.now()
             st.session_state.time_delta = calculate_time_delta(start_time, end_time)
+            st.session_state.chat_history = st.session_state.chat_history + "\n" + output2 + "\n"
         
         for msg in st.session_state.rag_messages:
             if msg["role"] == "user":
@@ -213,7 +217,7 @@ if __name__ == "__main__":
         with st.expander("Retrieval Docs"): st.session_state.retrieval_docs
 
         if st.session_state.time_delta: 
-            st.success(f"⏱️ Latency(Sec) : {st.session_state.time_delta}")
+            st.success(f"⏱️ Latency(Sec) : {st.session_state.time_delta}/ Input Char Length: {len(st.session_state.chat_history)}")
 
 
 
