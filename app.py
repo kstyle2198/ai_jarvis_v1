@@ -35,7 +35,7 @@ st.markdown(
 ### API KEY ------------------------------------------------------------------------
 load_dotenv()
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
-openai_api_key = st.secrets["openai_api_key"]
+OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 pw = st.secrets["password"]
 
 ### Function --------------------------------------------------------------------------
