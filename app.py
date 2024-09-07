@@ -11,7 +11,7 @@ my_groq = MyGroq()
 if __name__ == "__main__":
     st.title("AI Jarvis V2")
 
-    query = st.input("query")
+    query = st.text_input("query")
     if st.button("Submit"):
         res = my_groq(query)
         st.markdown(res)
