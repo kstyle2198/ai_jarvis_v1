@@ -190,8 +190,9 @@ if __name__ == "__main__":
             with st.spinner("Processing.."):
                 if st.button("Create VectorStore"):
                     st.session_state.vectorstore = make_vectordb(context_input)
-            if st.session_state.vectorstore:
-                st.session_state.vectorstore
+                    st.info("VectorStore is created")
+            # if st.session_state.vectorstore:
+            #     st.session_state.vectorstore
 
         text_input2 = st.chat_input("Say something")
         if text_input2:
