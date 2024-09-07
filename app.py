@@ -123,7 +123,7 @@ if "retrieval_docs" not in st.session_state: st.session_state.retrieval_docs = "
 
 
 example_text = '''
-ezample text:
+example text:
 The U.S. Commerce Department’s Bureau of Industry and Security (BIS) released a new export control guideline on advanced technologies related to quantum computing and chip manufacturing on Thursday, a measure designed to safeguard national security while restricting technological availability to China.
 The BIS published the rule regarding regulations on export items under four categories: quantum computing; advanced chip manufacturing equipment; gate all-around field-effect transistor (Gaafet) technology, which produces or develops high-performance computing chips used in supercomputers; and additive manufacturing items, which are equipment and materials used to produce metal or metal alloy components.
 '''
