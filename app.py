@@ -1,5 +1,5 @@
 import streamlit as st
-from .utils import MyGroq
+from frontend.utils import MyGroq
 import os
 from dotenv import load_dotenv
 load_dotenv()
