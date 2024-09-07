@@ -66,7 +66,7 @@ def make_retriever(context):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     docs = text_splitter.split_text(context)
     embeddings_model = OpenAIEmbeddings()
-    vectorstore = ""
+    vectorstore.delete_collection()
     vectorstore = Chroma.from_texts(docs, embeddings_model)
     retriever = vectorstore.as_retriever()
     return retriever
