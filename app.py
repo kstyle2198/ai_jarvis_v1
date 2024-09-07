@@ -35,6 +35,7 @@ st.markdown(
 ### API KEY ------------------------------------------------------------------------
 load_dotenv()
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
+openai_api_key = st.secrets["openai_api_key"]
 pw = st.secrets["password"]
 
 ### Function --------------------------------------------------------------------------
@@ -48,7 +49,7 @@ def open_chat(query, model_name):
         [
             (
                 "system",
-                "You're a very knowledgeable Machine Learning Engineer.",
+                "You're a very knowledgeable Shipbuilding Engineer.",
             ),
             ("human", "{question}"),
         ]
@@ -60,7 +61,7 @@ def open_chat(query, model_name):
 def make_vectordb(context):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     docs = text_splitter.split_text(context)
-    embeddings_model = OpenAIEmbeddings()
+    embeddings_model = OpenAIEmbeddings(openai_api_key)
     vectorstore = Chroma.from_texts(docs, embeddings_model)
     return vectorstore
 
