@@ -1,5 +1,8 @@
 import streamlit as st
-from utils import MyGroq
+from .utils import MyGroq
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 my_groq = MyGroq()
