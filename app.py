@@ -189,10 +189,10 @@ if __name__ == "__main__":
         with st.expander("VectorStore"): 
             context_input = st.text_area("Reference Knowledge",example_text, height=200)
             with st.spinner("Processing.."):
-                if st.button("Create VectorStore"):
+                if st.button("Create Retriever"):
                     st.session_state.retriever = ""
                     st.session_state.retriever = make_retriever(context_input)
-                    st.info("VectorStore is created")
+                    st.info("Retriever is created")
             if st.session_state.retriever:
                 st.session_state.retriever
 
