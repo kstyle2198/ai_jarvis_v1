@@ -5,19 +5,19 @@ import streamlit as st
 
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
-# from langchain.schema import StrOutputParser
-from langchain.schema.runnable import Runnable
-from langchain.schema.runnable.config import RunnableConfig
+# from langchain.schema.runnable import Runnable
+# from langchain.schema.runnable.config import RunnableConfig
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import FAISS
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_community.vectorstores import Chroma
+
 
 st.set_page_config(page_title="AI Jarvis-v1", layout="wide")
 st.markdown(
@@ -61,7 +61,7 @@ def make_vectordb(context):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     docs = text_splitter.split_text(context)
     embeddings_model = OpenAIEmbeddings()
-    vectorstore = FAISS.from_texts(docs, embeddings_model)
+    vectorstore = Chroma.from_texts(docs, embeddings_model)
     return vectorstore
 
 def rag_chat(query, vectordb, model_name):
