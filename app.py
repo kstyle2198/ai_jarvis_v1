@@ -2,14 +2,10 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 import streamlit as st
-__import__('pysqlite3')
-import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+
 
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
-# from langchain.schema.runnable import Runnable
-# from langchain.schema.runnable.config import RunnableConfig
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
@@ -21,6 +17,9 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.vectorstores import Chroma
 
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 st.set_page_config(page_title="AI Jarvis-v1", layout="wide")
 st.markdown(
@@ -189,6 +188,7 @@ if __name__ == "__main__":
             context_input = st.text_area("Reference Knowledge",example_text, height=200)
             with st.spinner("Processing.."):
                 if st.button("Create VectorStore"):
+                    st.session_state.vectorstore = ""
                     st.session_state.vectorstore = make_vectordb(context_input)
             if st.session_state.vectorstore:
                 st.session_state.vectorstore
