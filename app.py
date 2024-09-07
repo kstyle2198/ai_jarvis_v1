@@ -7,4 +7,3 @@ os.environ["GROQ_API_KEY"] == st.secrets["GROQ_API_KEY"]
 if __name__ == "__main__":
     st.title("AI Jarvis V2")
 
-    st.markdown(os.environ["GROQ_API_KEY"])
