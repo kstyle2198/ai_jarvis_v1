@@ -2,9 +2,10 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 import streamlit as st
-__import__('pysqlite3')
-import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+# __import__('pysqlite3')
+# import sys
+# sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+import sqlite3
 
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
