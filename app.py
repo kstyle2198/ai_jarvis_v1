@@ -61,7 +61,7 @@ def open_chat(query, model_name):
 def make_vectordb(context):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     docs = text_splitter.split_text(context)
-    embeddings_model = OpenAIEmbeddings(openai_api_key)
+    embeddings_model = OpenAIEmbeddings()
     vectorstore = Chroma.from_texts(docs, embeddings_model)
     return vectorstore
 
