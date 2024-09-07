@@ -128,7 +128,7 @@ if __name__ == "__main__":
     with st.sidebar:
         st.title("⚓ AI Jarvis v1")
         st.markdown("")
-        password = st.text_input("🔑 Password(1234)", type="password")
+        password = st.text_input("🔑 Password", type="password")
         
         col11, col12 = st.columns(2)
         with col11: btn_login=st.button("Login", use_container_width=True)
