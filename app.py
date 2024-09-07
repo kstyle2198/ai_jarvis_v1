@@ -186,11 +186,11 @@ if __name__ == "__main__":
             st.success(f"⏱️ Latency(Sec) : {st.session_state.time_delta} / Input Char Length: {len(st.session_state.chat_history)}")
 
     elif service_type == "Rag Chat" and st.session_state.password:
-        st.session_state.retriever = ""
         with st.expander("VectorStore"): 
             context_input = st.text_area("Reference Knowledge",example_text, height=200)
             with st.spinner("Processing.."):
                 if st.button("Create VectorStore"):
+                    st.session_state.retriever = ""
                     st.session_state.retriever = make_vectordb(context_input)
                     st.info("VectorStore is created")
             if st.session_state.retriever:
