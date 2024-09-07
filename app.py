@@ -123,6 +123,7 @@ if "retrieval_docs" not in st.session_state: st.session_state.retrieval_docs = "
 
 
 example_text = '''
+ezample text:
 The U.S. Commerce Department’s Bureau of Industry and Security (BIS) released a new export control guideline on advanced technologies related to quantum computing and chip manufacturing on Thursday, a measure designed to safeguard national security while restricting technological availability to China.
 The BIS published the rule regarding regulations on export items under four categories: quantum computing; advanced chip manufacturing equipment; gate all-around field-effect transistor (Gaafet) technology, which produces or develops high-performance computing chips used in supercomputers; and additive manufacturing items, which are equipment and materials used to produce metal or metal alloy components.
 '''
@@ -186,8 +187,8 @@ if __name__ == "__main__":
             st.success(f"⏱️ Latency(Sec) : {st.session_state.time_delta} / Input Char Length: {len(st.session_state.chat_history)}")
 
     elif service_type == "Rag Chat" and st.session_state.password:
-        with st.expander("VectorStore"): 
-            context_input = st.text_area("Reference Knowledge",example_text, height=200)
+        with st.expander("Retriever"): 
+            context_input = st.text_area("Reference Knowledge", example_text, key="uyhv", height=200)
             with st.spinner("Processing.."):
                 if st.button("Create Retriever"):
                     st.session_state.retriever = ""
