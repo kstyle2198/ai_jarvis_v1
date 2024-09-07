@@ -62,7 +62,7 @@ def open_chat(query, model_name):
     res = runnable.invoke(query)
     return res
 
-def make_vectordb(context):
+def make_retriever(context):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     docs = text_splitter.split_text(context)
     embeddings_model = OpenAIEmbeddings()
@@ -191,7 +191,7 @@ if __name__ == "__main__":
             with st.spinner("Processing.."):
                 if st.button("Create VectorStore"):
                     st.session_state.retriever = ""
-                    st.session_state.retriever = make_vectordb(context_input)
+                    st.session_state.retriever = make_retriever(context_input)
                     st.info("VectorStore is created")
             if st.session_state.retriever:
                 st.session_state.retriever
