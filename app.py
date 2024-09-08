@@ -1,8 +1,9 @@
 import os
 from datetime import datetime
+import numpy as np
 from dotenv import load_dotenv
 import streamlit as st
-
+from streamlit_pills import pills
 
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
@@ -24,6 +25,7 @@ sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 ###  pysqlite3-binary ---> requirements.txt 에 추가
 
 st.set_page_config(page_title="AI Jarvis-v1", layout="wide")
+
 st.markdown(
             """
         <style>
@@ -104,24 +106,16 @@ def rag_chat(query, retriever, model_name):
 ### Variables ---------------------------------------------------------------------------------------------
 model_name_dict = {"Llama3.1(8B)":"llama-3.1-8b-instant", "Gemma2(9B)":"gemma2-9b-it", "Llama3.1(70B)":"llama-3.1-70b-versatile"}
 
-if "password" not in st.session_state: st.session_state.password = ""
-
-if "time_delta" not in st.session_state:
-    st.session_state.time_delta = ""
-    st.session_state.rag_time_delta = ""
-    
-if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "How can I help you?"}]
-    st.session_state.reversed_messages = ""
-
-if "rag_messages" not in st.session_state:
-    st.session_state.rag_messages = [{"role": "assistant", "content": "How can I help you?"}]
-    st.session_state.reversed_rag_messages = ""
-
+if "login_status" not in st.session_state: st.session_state.login_status = False
+if "time_delta" not in st.session_state: st.session_state.time_delta = ""
+if "rag_time_delta" not in st.session_state: st.session_state.rag_time_delta = ""
+if "messages" not in st.session_state: st.session_state.messages = [{"role": "assistant", "content": "How can I help you?"}]
+if "rag_messages" not in st.session_state: st.session_state.rag_messages = [{"role": "assistant", "content": "How can I help you?"}]
 if "chat_history" not in st.session_state: st.session_state.chat_history = ""
 if "model_name" not in st.session_state: st.session_state.model_name = ""
 if "retriever" not in st.session_state: st.session_state.retriever = ""
 if "retrieval_docs" not in st.session_state: st.session_state.retrieval_docs = ""
+if "prev_questions" not in st.session_state: st.session_state.prev_questions = []
 
 
 example_text = '''
@@ -136,40 +130,45 @@ if __name__ == "__main__":
     with st.sidebar:
         st.title("⚓ AI Jarvis v1")
         st.markdown("")
+
         password = st.text_input("🔑 Password", type="password")
-        
         col11, col12 = st.columns(2)
-        with col11: btn_login=st.button("Login", use_container_width=True)
-        with col12: btn_init=st.button("Memory Init", use_container_width=True)
+        with col11: btn_login=st.button("Login", use_container_width=True, help="1234")
+        with col12: btn_init=st.button("Memory Init", use_container_width=True, help="Initialize Multi-Turn Memory")
 
         if btn_login and password == pw:
-            st.session_state.password = password
+            st.session_state.login_status = True
             st.info("Login Success")
         else: pass 
 
-        if btn_init:st.session_state.chat_history = ""
+        if btn_init:
+            st.session_state.chat_history = ""
+            st.session_state.prev_questions = []
 
+        
         st.markdown("---")
-        service_type = st.radio("🐬 Services", options=["Open Chat", "Rag Chat",])
+        service_type = st.radio("🐬 Services", options=["Open Chat", "Quick Rag",])
     
         st.markdown("---")
         if service_type == "Open Chat":
             llm1 = st.radio("🐬 **Select LLM**", options=["Llama3.1(8B)", "Gemma2(9B)", "Llama3.1(70B)"], index=0, key="dsfv", help="Bigger LLM returns better answers but takes more time")
             st.session_state.model_name = model_name_dict[llm1]
             st.markdown("")
-        elif service_type == "Rag Chat":
+        elif service_type == "Quick Rag":
             llm2 = st.radio("🐬 **Select LLM**", options=["Llama3.1(8B)", "Gemma2(9B)", "Llama3.1(70B)"], index=0, key="dsfv", help="Bigger LLM returns better answers but takes more time")
             st.session_state.model_name = model_name_dict[llm2]
             st.markdown("")
         
+        st.markdown("---")
 
     ## Main -----------------------------------------------------------------------------------------------
     st.title("AI Jarvis v1")
     st.markdown("---")
+    
 
 
-    if service_type == "Open Chat" and st.session_state.password:
-        text_input1 = st.chat_input("Say something")
+    if service_type == "Open Chat" and st.session_state.login_status:
+        text_input1 = st.chat_input(placeholder="Say something")
         if text_input1:
             st.session_state.chat_history = st.session_state.chat_history + "\n" + text_input1 + "\n"
             start_time = datetime.now()
@@ -185,10 +184,19 @@ if __name__ == "__main__":
                 st.chat_message(msg["role"], avatar="🐬").write(msg["content"])
             else:
                 st.chat_message(msg["role"], avatar="🤖").write(msg["content"])
+            
         if st.session_state.time_delta: 
-            st.success(f"⏱️ Latency(Sec) : {st.session_state.time_delta} / Input Char Length: {len(st.session_state.chat_history)}")
+            st.success(f"⏱️ Latency(Sec) : {np.round(st.session_state.time_delta,2)}  /  Total Q&A Length(Char): {len(st.session_state.chat_history)}")
 
-    elif service_type == "Rag Chat" and st.session_state.password:
+        try:
+            if text_input1 and text_input1 not in st.session_state.prev_questions:
+                st.session_state.prev_questions.append(text_input1)
+                selected = pills("Previous Questions", st.session_state.prev_questions)
+            else: 
+                selected = pills("Previous Questions", st.session_state.prev_questions)
+        except: pass
+
+    elif service_type == "Quick Rag" and st.session_state.login_status:
         with st.expander("Retriever"): 
             context_input = st.text_area("Reference Knowledge", example_text, key="uyhv", height=200)
             with st.spinner("Processing.."):
@@ -201,16 +209,15 @@ if __name__ == "__main__":
 
         text_input2 = st.chat_input("Say something")
         if text_input2:
+            st.session_state.prev_questions.append(text_input2)
             st.session_state.chat_history = st.session_state.chat_history + "\n" + text_input2 + "\n"
-            start_time = datetime.now()
+            rag_start_time = datetime.now()
             st.session_state.rag_messages.append({"role": "user", "content": text_input2})
-
             retrieval_docs, output2 = rag_chat(text_input2, st.session_state.retriever, st.session_state.model_name)
-
             st.session_state.rag_messages.append({"role": "assistant", "content": output2})
             st.session_state.retrieval_docs = retrieval_docs
-            end_time = datetime.now()
-            st.session_state.time_delta = calculate_time_delta(start_time, end_time)
+            rag_end_time = datetime.now()
+            st.session_state.rag_time_delta = calculate_time_delta(rag_start_time, rag_end_time)
             st.session_state.chat_history = st.session_state.chat_history + "\n" + output2 + "\n"
         
         for msg in st.session_state.rag_messages:
@@ -221,13 +228,13 @@ if __name__ == "__main__":
 
         with st.expander("Retrieval Docs"): st.session_state.retrieval_docs
 
-        if st.session_state.time_delta: 
-            st.success(f"⏱️ Latency(Sec) : {st.session_state.time_delta}/ Input Char Length: {len(st.session_state.chat_history)}")
+        if st.session_state.rag_time_delta: 
+            st.success(f"⏱️ Latency(Sec) : {np.round(st.session_state.rag_time_delta,2)}  /  Total Q&A Length(Char): {len(st.session_state.chat_history)}")
 
 
 
     else: pass
-
+    
 
 
     
