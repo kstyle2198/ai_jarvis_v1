@@ -4,7 +4,7 @@ import stat
 from datetime import datetime
 import numpy as np
 import pandas as pd
-import chromadb
+# import chromadb
 from dotenv import load_dotenv
 import streamlit as st
 from streamlit_pills import pills
@@ -74,12 +74,12 @@ def remove_folder(folder_path):
         print(f"Error removing {folder_path}: {e}")
 
 
-def view_collections(db_path): # db를 df로 보여주기 위한 함수
-    client = chromadb.PersistentClient(path=db_path)
-    for collection in client.list_collections():
-        data = collection.get(include=['embeddings', 'documents'])
-        df = pd.DataFrame({"ids":data["ids"], "embeddings":data["embeddings"], "documents":data["documents"]})
-    return df
+# def view_collections(db_path): # db를 df로 보여주기 위한 함수
+#     client = chromadb.PersistentClient(path=db_path)
+#     for collection in client.list_collections():
+#         data = collection.get(include=['embeddings', 'documents'])
+#         df = pd.DataFrame({"ids":data["ids"], "embeddings":data["embeddings"], "documents":data["documents"]})
+#     return df
 
 
 def calculate_time_delta(start, end):
