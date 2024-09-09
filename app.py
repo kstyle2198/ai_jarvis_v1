@@ -6,13 +6,8 @@ sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 ###  pysqlite3-binary ---> requirements.txt 에 추가
 
-# import os
-# import shutil
-# import stat
 from datetime import datetime
 import numpy as np
-# import pandas as pd
-# import chromadb
 from dotenv import load_dotenv
 import streamlit as st
 from streamlit_pills import pills
@@ -27,6 +22,7 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.vectorstores import Chroma
 
+### Layout ------------------------------------------------------------------------------------
 if "center" not in st.session_state:
     layout = "centered"
 else:
@@ -52,54 +48,20 @@ OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 pw = st.secrets["password"]
 
 ### Function --------------------------------------------------------------------------
-# def remove_readonly(func, path, excinfo):
-#     """Helper function to remove read-only attribute and retry delete."""
-#     exc_type, exc_value, exc_traceback = excinfo
-#     if exc_type is PermissionError:
-#         # Make the file writable
-#         os.chmod(path, stat.S_IWRITE)
-#         # Retry removing the file
-#         func(path)
-#     else:
-#         raise
-
-# def remove_folder(folder_path):
-#     """Remove folder and handle permission errors."""
-#     if not os.path.isdir(folder_path):
-#         print(f"{folder_path} is not a directory or does not exist.")
-#         return
-
-#     try:
-#         # Attempt to remove the folder
-#         shutil.rmtree(folder_path, onerror=remove_readonly)
-#         print(f"Successfully removed {folder_path}")
-#     except Exception as e:
-#         print(f"Error removing {folder_path}: {e}")
-
-
-# def view_collections(db_path): # db를 df로 보여주기 위한 함수
-#     client = chromadb.PersistentClient(path=db_path)
-#     for collection in client.list_collections():
-#         data = collection.get(include=['embeddings', 'documents'])
-#         df = pd.DataFrame({"ids":data["ids"], "embeddings":data["embeddings"], "documents":data["documents"]})
-#     return df
-
-
 def calculate_time_delta(start, end):
     delta = end - start
     return delta.total_seconds()
 
 def open_chat(query, model_name):
     model = ChatGroq(temperature=0, model_name= model_name)   # "llama-3.1-8b-instant","llama-guard-3-8b", "gemma2-9b-it","llama-3.1-70b-versatile",
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            (
-                "system",
-                "You're a very knowledgeable Shipbuilding Engineer.",
+    prompt = ChatPromptTemplate.from_messages([
+        (
+            "system",
+            "You're a very knowledgeable Shipbuilding Engineer.",
             ),
             ("human", "{question}"),
-        ]
-    )
+            ]
+            )
     runnable = prompt | model | StrOutputParser()
     res = runnable.invoke(query)
     return res
@@ -114,21 +76,21 @@ def make_retriever(context):
 
 def rag_chat(query, retriever, model_name):
     system_prompt = (
-    "You are an assistant for question-answering tasks. "
-    "Use the following pieces of retrieved context to answer "
-    "the question. If you don't know the answer, say that you "
-    "don't know. Use three sentences maximum and keep the "
-    "answer concise."
-    "\n\n"
-    "{context}"
-    )
+        "You are an assistant for question-answering tasks. "
+        "Use the following pieces of retrieved context to answer "
+        "the question. If you don't know the answer, say that you "
+        "don't know. Use three sentences maximum and keep the "
+        "answer concise."
+        "\n\n"
+        "{context}"
+        )
 
     prompt = ChatPromptTemplate.from_messages(
         [
             ("system", system_prompt),
             ("human", "{input}"),
-        ]
-    )
+            ]
+        )
 
     model = ChatGroq(temperature=0, model_name= model_name)
     question_answer_chain = create_stuff_documents_chain(model, prompt)
@@ -151,7 +113,6 @@ if "model_name" not in st.session_state: st.session_state.model_name = ""
 if "retriever" not in st.session_state: st.session_state.retriever = ""
 if "retrieval_docs" not in st.session_state: st.session_state.retrieval_docs = ""
 if "prev_questions" not in st.session_state: st.session_state.prev_questions = []
-
 
 example_text = '''
 example text:
@@ -180,12 +141,11 @@ if __name__ == "__main__":
         if btn_init:
             st.session_state.chat_history = ""
             st.session_state.prev_questions = []
+        st.markdown("---")
 
-        
-        st.markdown("---")
         service_type = st.radio("🐬 Services", options=["Open Chat", "Quick Rag",])
-    
         st.markdown("---")
+
         if service_type == "Open Chat":
             llm1 = st.radio("🐬 **Select LLM**", options=["Llama3.1(8B)", "Gemma2(9B)", "Llama3.1(70B)"], index=0, key="dsfv", help="Bigger LLM returns better answers but takes more time")
             st.session_state.model_name = model_name_dict[llm1]
@@ -194,7 +154,6 @@ if __name__ == "__main__":
             llm2 = st.radio("🐬 **Select LLM**", options=["Llama3.1(8B)", "Gemma2(9B)", "Llama3.1(70B)"], index=0, key="dsfv", help="Bigger LLM returns better answers but takes more time")
             st.session_state.model_name = model_name_dict[llm2]
             st.markdown("")
-        
         st.markdown("---")
 
     ## Main -----------------------------------------------------------------------------------------------
@@ -241,8 +200,7 @@ if __name__ == "__main__":
                         vectordb._client.delete_collection(vectordb._collection.name)
                     except: pass
                     st.session_state.retriever  = make_retriever(context_input)
-                    # df = view_collections("./chroma_db")
-                    # st.dataframe(df)
+
             if st.session_state.retriever:
                 st.info(f"Retriever is created ---->   {st.session_state.retriever}")
 
@@ -266,16 +224,8 @@ if __name__ == "__main__":
             else:
                 st.chat_message(msg["role"], avatar="🤖").write(msg["content"])
 
-            
-
         if st.session_state.rag_time_delta: 
             st.success(f"⏱️ Latency(Sec) : {np.round(st.session_state.rag_time_delta,2)}  /  Total Q&A Length(Char): {len(st.session_state.chat_history)}")
 
     else: pass
     
-
-
-    
-
-
-
