@@ -15,7 +15,8 @@ build==1.2.2
 cachetools==5.5.0
 certifi==2024.8.30
 charset-normalizer==3.3.2
-chromadb==0.5.5
+chroma-hnswlib==0.7.3
+chromadb==0.4.17
 click==8.1.7
 colorama==0.4.6
 coloredlogs==15.0.1
@@ -92,6 +93,7 @@ pandas==2.2.2
 pillow==10.4.0
 posthog==3.6.3
 protobuf==4.25.4
+pulsar-client==3.5.0
 pyarrow==17.0.0
 pyasn1==0.6.0
 pyasn1_modules==0.4.0
