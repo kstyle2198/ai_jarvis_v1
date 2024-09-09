@@ -1,6 +1,10 @@
 import os
+import shutil
+import stat
 from datetime import datetime
 import numpy as np
+import pandas as pd
+import chromadb
 from dotenv import load_dotenv
 import streamlit as st
 from streamlit_pills import pills
@@ -45,6 +49,39 @@ OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 pw = st.secrets["password"]
 
 ### Function --------------------------------------------------------------------------
+def remove_readonly(func, path, excinfo):
+    """Helper function to remove read-only attribute and retry delete."""
+    exc_type, exc_value, exc_traceback = excinfo
+    if exc_type is PermissionError:
+        # Make the file writable
+        os.chmod(path, stat.S_IWRITE)
+        # Retry removing the file
+        func(path)
+    else:
+        raise
+
+def remove_folder(folder_path):
+    """Remove folder and handle permission errors."""
+    if not os.path.isdir(folder_path):
+        print(f"{folder_path} is not a directory or does not exist.")
+        return
+
+    try:
+        # Attempt to remove the folder
+        shutil.rmtree(folder_path, onerror=remove_readonly)
+        print(f"Successfully removed {folder_path}")
+    except Exception as e:
+        print(f"Error removing {folder_path}: {e}")
+
+
+def view_collections(db_path): # db를 df로 보여주기 위한 함수
+    client = chromadb.PersistentClient(path=db_path)
+    for collection in client.list_collections():
+        data = collection.get(include=['embeddings', 'documents'])
+        df = pd.DataFrame({"ids":data["ids"], "embeddings":data["embeddings"], "documents":data["documents"]})
+    return df
+
+
 def calculate_time_delta(start, end):
     delta = end - start
     return delta.total_seconds()
@@ -68,11 +105,9 @@ def make_retriever(context):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     docs = text_splitter.split_text(context)
     embeddings_model = OpenAIEmbeddings()
-    try: vectorstore.delete_collection()
-    except: pass
-    vectorstore = Chroma.from_texts(docs, embeddings_model)
-    retriever = vectorstore.as_retriever()
-    return retriever
+    vectorstore = Chroma.from_texts(docs, embeddings_model, persist_directory="./chroma_db")
+    retriever1 = vectorstore.as_retriever()
+    return retriever1
 
 def rag_chat(query, retriever, model_name):
     system_prompt = (
@@ -135,7 +170,10 @@ if __name__ == "__main__":
 
         if btn_login and password == pw:
             st.session_state.login_status = True
-            st.cache_data.clear()
+            try: 
+                remove_folder("./chroma_db")
+                st.success("Chromadb is deleted")
+            except: pass
             st.info("Login Success")
         else: pass 
 
@@ -163,8 +201,6 @@ if __name__ == "__main__":
     st.title("AI Jarvis v1")
     st.markdown("---")
     
-
-
     if service_type == "Open Chat" and st.session_state.login_status:
         text_input1 = st.chat_input(placeholder="Say something")
         if text_input1:
@@ -195,13 +231,19 @@ if __name__ == "__main__":
         except: pass
 
     elif service_type == "Quick Rag" and st.session_state.login_status:
-        with st.expander("Retriever"): 
+        with st.expander("Retriever", expanded=True): 
             context_input = st.text_area("Reference Knowledge", example_text, key="uyhv", height=200)
             with st.spinner("Processing.."):
                 if st.button("Create Retriever"):
-                    st.session_state.retriever = ""
-                    st.session_state.retriever = make_retriever(context_input)
+                    try:
+                        vectordb = Chroma(persist_directory="chroma_db", embedding_function=OpenAIEmbeddings())
+                        vectordb._client.delete_collection(vectordb._collection.name)
+                    except: pass
+                    st.session_state.retriever  = make_retriever(context_input)
+                    # df = view_collections("./chroma_db")
+                    # st.dataframe(df)
                     st.info("Retriever is created")
+
             if st.session_state.retriever:
                 st.session_state.retriever
 
