@@ -11,17 +11,17 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
 
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.vectorstores import Chroma
 
+### [시작] 배포시 주석 해제 구간 #####################
 __import__('pysqlite3')
 import sys
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
-
+### [종료 ] 배포시 주석 해제 구간 #####################
 ###  pysqlite3-binary ---> requirements.txt 에 추가
 
 st.set_page_config(page_title="AI Jarvis-v1", layout="wide")
@@ -99,9 +99,6 @@ def rag_chat(query, retriever, model_name):
     return response["context"], response["answer"]
 
 
-
-
-
     
 ### Variables ---------------------------------------------------------------------------------------------
 model_name_dict = {"Llama3.1(8B)":"llama-3.1-8b-instant", "Gemma2(9B)":"gemma2-9b-it", "Llama3.1(70B)":"llama-3.1-70b-versatile"}
@@ -138,6 +135,7 @@ if __name__ == "__main__":
 
         if btn_login and password == pw:
             st.session_state.login_status = True
+            st.cache_data.clear()
             st.info("Login Success")
         else: pass 
 
