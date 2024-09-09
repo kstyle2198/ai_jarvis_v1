@@ -1,9 +1,9 @@
-import os
-import shutil
-import stat
+# import os
+# import shutil
+# import stat
 from datetime import datetime
 import numpy as np
-import pandas as pd
+# import pandas as pd
 # import chromadb
 from dotenv import load_dotenv
 import streamlit as st
@@ -49,29 +49,29 @@ OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 pw = st.secrets["password"]
 
 ### Function --------------------------------------------------------------------------
-def remove_readonly(func, path, excinfo):
-    """Helper function to remove read-only attribute and retry delete."""
-    exc_type, exc_value, exc_traceback = excinfo
-    if exc_type is PermissionError:
-        # Make the file writable
-        os.chmod(path, stat.S_IWRITE)
-        # Retry removing the file
-        func(path)
-    else:
-        raise
+# def remove_readonly(func, path, excinfo):
+#     """Helper function to remove read-only attribute and retry delete."""
+#     exc_type, exc_value, exc_traceback = excinfo
+#     if exc_type is PermissionError:
+#         # Make the file writable
+#         os.chmod(path, stat.S_IWRITE)
+#         # Retry removing the file
+#         func(path)
+#     else:
+#         raise
 
-def remove_folder(folder_path):
-    """Remove folder and handle permission errors."""
-    if not os.path.isdir(folder_path):
-        print(f"{folder_path} is not a directory or does not exist.")
-        return
+# def remove_folder(folder_path):
+#     """Remove folder and handle permission errors."""
+#     if not os.path.isdir(folder_path):
+#         print(f"{folder_path} is not a directory or does not exist.")
+#         return
 
-    try:
-        # Attempt to remove the folder
-        shutil.rmtree(folder_path, onerror=remove_readonly)
-        print(f"Successfully removed {folder_path}")
-    except Exception as e:
-        print(f"Error removing {folder_path}: {e}")
+#     try:
+#         # Attempt to remove the folder
+#         shutil.rmtree(folder_path, onerror=remove_readonly)
+#         print(f"Successfully removed {folder_path}")
+#     except Exception as e:
+#         print(f"Error removing {folder_path}: {e}")
 
 
 # def view_collections(db_path): # db를 df로 보여주기 위한 함수
@@ -170,10 +170,6 @@ if __name__ == "__main__":
 
         if btn_login and password == pw:
             st.session_state.login_status = True
-            try: 
-                remove_folder("./chroma_db")
-                st.success("Chromadb is deleted")
-            except: pass
             st.info("Login Success")
         else: pass 
 
