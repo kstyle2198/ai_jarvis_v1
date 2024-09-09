@@ -1,3 +1,11 @@
+### [시작] 배포시 주석 해제 구간 #####################
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+### [종료 ] 배포시 주석 해제 구간 #####################
+
+###  pysqlite3-binary ---> requirements.txt 에 추가
+
 # import os
 # import shutil
 # import stat
@@ -11,29 +19,24 @@ from streamlit_pills import pills
 
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
-
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_core.output_parsers import StrOutputParser
-
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.vectorstores import Chroma
 
-### [시작] 배포시 주석 해제 구간 #####################
-__import__('pysqlite3')
-import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
-### [종료 ] 배포시 주석 해제 구간 #####################
-###  pysqlite3-binary ---> requirements.txt 에 추가
-
-st.set_page_config(page_title="AI Jarvis-v1", layout="wide")
+if "center" not in st.session_state:
+    layout = "centered"
+else:
+    layout = "wide" if st.session_state.center else "centered"
+st.set_page_config(page_title="AI Jarvis-v1", layout=layout)
 
 st.markdown(
             """
         <style>
-            .st-emotion-cache-janbn0 {
+            .st-emotion-cache-1c7y2kd {
                 flex-direction: row-reverse;
                 text-align: right;
             }
@@ -170,6 +173,7 @@ if __name__ == "__main__":
 
         if btn_login and password == pw:
             st.session_state.login_status = True
+            st.session_state.chat_history = ""
             st.info("Login Success")
         else: pass 
 
@@ -195,6 +199,7 @@ if __name__ == "__main__":
 
     ## Main -----------------------------------------------------------------------------------------------
     st.title("AI Jarvis v1")
+    st.checkbox("🐋 Wide Layout", key="center", value=st.session_state.get("center", False))
     st.markdown("---")
     
     if service_type == "Open Chat" and st.session_state.login_status:
@@ -238,10 +243,8 @@ if __name__ == "__main__":
                     st.session_state.retriever  = make_retriever(context_input)
                     # df = view_collections("./chroma_db")
                     # st.dataframe(df)
-                    st.info("Retriever is created")
-
             if st.session_state.retriever:
-                st.session_state.retriever
+                st.info(f"Retriever is created ---->   {st.session_state.retriever}")
 
         text_input2 = st.chat_input("Say something")
         if text_input2:
@@ -255,6 +258,7 @@ if __name__ == "__main__":
             rag_end_time = datetime.now()
             st.session_state.rag_time_delta = calculate_time_delta(rag_start_time, rag_end_time)
             st.session_state.chat_history = st.session_state.chat_history + "\n" + output2 + "\n"
+            with st.expander("Retrieval Docs"): st.session_state.retrieval_docs
         
         for msg in st.session_state.rag_messages:
             if msg["role"] == "user":
@@ -262,12 +266,10 @@ if __name__ == "__main__":
             else:
                 st.chat_message(msg["role"], avatar="🤖").write(msg["content"])
 
-        with st.expander("Retrieval Docs"): st.session_state.retrieval_docs
+            
 
         if st.session_state.rag_time_delta: 
             st.success(f"⏱️ Latency(Sec) : {np.round(st.session_state.rag_time_delta,2)}  /  Total Q&A Length(Char): {len(st.session_state.chat_history)}")
-
-
 
     else: pass
     
