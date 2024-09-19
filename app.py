@@ -1,10 +1,7 @@
 ### [시작] Delploy 할때만 실행되는 코드 #####################
-# import os
-# if os.getenv('ENV') == 'production':
-__import__('pysqlite3')
-import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
-# else: pass
+# __import__('pysqlite3')
+# import sys
+# sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 ### [종료 ] Delploy 할때만 실행되는 코드 #####################
 
 ###  pysqlite3-binary ---> requirements.txt 에 추가
@@ -90,20 +87,16 @@ def rag_chat(query, retriever, model_name):
     #     )
     system_prompt = ('''
 You are an assistant for question-answering tasks. 
-Use the following pieces of retrieved context to answer 
-the question. If you don't know the answer, say that you 
-don't know. Use three sentences maximum and keep the answer concise.
+Use the following pieces of retrieved context to answer the question. 
+If you don't know the answer, say that you don't know. Use three sentences maximum and keep the answer concise.
 
 {context}
 Please provide your answer in the following JSON format: 
 {{
 "answer": "Your detailed answer here",\n
-"keywords: [list of importnat keywords from the context] \n
-"sources": "Direct sentences or paragraphs from the context that 
-        support your answers. ONLY RELEVANT TEXT DIRECTLY FROM THE 
-        DOCUMENTS. DO NOT ADD ANYTHING EXTRA. DO NOT INVENT ANYTHING."
+"keywords: [list of important keywords from the context] \n
+"sources": "Direct sentences or paragraphs from the context that support your answers. ONLY RELEVANT TEXT DIRECTLY FROM THE DOCUMENTS. DO NOT ADD ANYTHING EXTRA. DO NOT INVENT ANYTHING."
 }}
-
 The JSON must be a valid json format and can be read with json.loads() in Python. Answer:
                      ''')
 
@@ -171,6 +164,7 @@ if __name__ == "__main__":
         if service_type == "Open Chat":
             llm1 = st.radio("🐬 **Select LLM**", options=["Llama3.1(8B)", "Gemma2(9B)", "Llama3.1(70B)"], index=0, key="dsfv", help="Bigger LLM returns better answers but takes more time")
             st.session_state.model_name = model_name_dict[llm1]
+            st.session_state.model_name
             st.markdown("")
         elif service_type == "Quick Rag":
             llm2 = st.radio("🐬 **Select LLM**", options=["Llama3.1(8B)", "Gemma2(9B)", "Llama3.1(70B)"], index=0, key="dsfv", help="Bigger LLM returns better answers but takes more time")
@@ -228,7 +222,7 @@ if __name__ == "__main__":
 
         text_input2 = st.chat_input("Say something")
         if text_input2:
-            st.session_state.prev_questions.append(text_input2)
+            # st.session_state.prev_questions.append(text_input2)
             st.session_state.chat_history = st.session_state.chat_history + "\n" + text_input2 + "\n"
             rag_start_time = datetime.now()
             st.session_state.rag_messages.append({"role": "user", "content": text_input2})
@@ -239,9 +233,6 @@ if __name__ == "__main__":
             st.session_state.rag_time_delta = calculate_time_delta(rag_start_time, rag_end_time)
             st.session_state.chat_history = st.session_state.chat_history + "\n" + output2 + "\n"
             
-        
-
-
         for msg in st.session_state.rag_messages:
             if msg["role"] == "user":
                 st.chat_message(msg["role"], avatar="🐬").write(msg["content"])
@@ -252,6 +243,14 @@ if __name__ == "__main__":
 
         if st.session_state.rag_time_delta: 
             st.success(f"⏱️ Latency(Sec) : {np.round(st.session_state.rag_time_delta,2)}  /  Total Q&A Length(Char): {len(st.session_state.chat_history)}")
+
+        try:
+            if text_input2 and text_input2 not in st.session_state.prev_questions:
+                st.session_state.prev_questions.append(text_input2)
+                selected = pills("Previous Questions", st.session_state.prev_questions)
+            else: 
+                selected = pills("Previous Questions", st.session_state.prev_questions)
+        except: pass
 
     else: pass
     
