@@ -1,10 +1,10 @@
 ### [시작] Delploy 할때만 실행되는 코드 #####################
-import os
-if os.getenv('ENV') == 'production':
-    __import__('pysqlite3')
-    import sys
-    sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
-else: pass
+# import os
+# if os.getenv('ENV') == 'production':
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+# else: pass
 ### [종료 ] Delploy 할때만 실행되는 코드 #####################
 
 ###  pysqlite3-binary ---> requirements.txt 에 추가
