@@ -1,8 +1,11 @@
-### [시작] 배포시 주석 해제 구간 #####################
-__import__('pysqlite3')
-import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
-### [종료 ] 배포시 주석 해제 구간 #####################
+### [시작] Delploy 할때만 실행되는 코드 #####################
+import os
+if os.getenv('ENV') == 'production':
+    __import__('pysqlite3')
+    import sys
+    sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+else: pass
+### [종료 ] Delploy 할때만 실행되는 코드 #####################
 
 ###  pysqlite3-binary ---> requirements.txt 에 추가
 
@@ -11,6 +14,7 @@ import numpy as np
 from dotenv import load_dotenv
 import streamlit as st
 from streamlit_pills import pills
+import json
 
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
@@ -75,15 +79,33 @@ def make_retriever(context):
     return retriever1
 
 def rag_chat(query, retriever, model_name):
-    system_prompt = (
-        "You are an assistant for question-answering tasks. "
-        "Use the following pieces of retrieved context to answer "
-        "the question. If you don't know the answer, say that you "
-        "don't know. Use three sentences maximum and keep the "
-        "answer concise."
-        "\n\n"
-        "{context}"
-        )
+    # system_prompt = (
+    #     "You are an assistant for question-answering tasks. "
+    #     "Use the following pieces of retrieved context to answer "
+    #     "the question. If you don't know the answer, say that you "
+    #     "don't know. Use three sentences maximum and keep the "
+    #     "answer concise."
+    #     "\n\n"
+    #     "{context}"
+    #     )
+    system_prompt = ('''
+You are an assistant for question-answering tasks. 
+Use the following pieces of retrieved context to answer 
+the question. If you don't know the answer, say that you 
+don't know. Use three sentences maximum and keep the answer concise.
+
+{context}
+Please provide your answer in the following JSON format: 
+{{
+"answer": "Your detailed answer here",\n
+"keywords: [list of importnat keywords from the context] \n
+"sources": "Direct sentences or paragraphs from the context that 
+        support your answers. ONLY RELEVANT TEXT DIRECTLY FROM THE 
+        DOCUMENTS. DO NOT ADD ANYTHING EXTRA. DO NOT INVENT ANYTHING."
+}}
+
+The JSON must be a valid json format and can be read with json.loads() in Python. Answer:
+                     ''')
 
     prompt = ChatPromptTemplate.from_messages(
         [
@@ -216,13 +238,17 @@ if __name__ == "__main__":
             rag_end_time = datetime.now()
             st.session_state.rag_time_delta = calculate_time_delta(rag_start_time, rag_end_time)
             st.session_state.chat_history = st.session_state.chat_history + "\n" + output2 + "\n"
-            with st.expander("Retrieval Docs"): st.session_state.retrieval_docs
+            
         
+
+
         for msg in st.session_state.rag_messages:
             if msg["role"] == "user":
                 st.chat_message(msg["role"], avatar="🐬").write(msg["content"])
             else:
                 st.chat_message(msg["role"], avatar="🤖").write(msg["content"])
+                
+        with st.expander("Retrieval Docs"): st.session_state.retrieval_docs
 
         if st.session_state.rag_time_delta: 
             st.success(f"⏱️ Latency(Sec) : {np.round(st.session_state.rag_time_delta,2)}  /  Total Q&A Length(Char): {len(st.session_state.chat_history)}")
