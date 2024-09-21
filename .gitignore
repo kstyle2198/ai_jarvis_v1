@@ -4,4 +4,5 @@ myenv
 chroma_db
 chroma_db_text
 chroma_db_pdf
+chroma_db_url
 data
