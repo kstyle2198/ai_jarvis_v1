@@ -2,3 +2,6 @@ myenv
 .streamlit
 .env
 chroma_db
+chroma_db_text
+chroma_db_pdf
+data

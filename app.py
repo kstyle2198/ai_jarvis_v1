@@ -11,8 +11,10 @@ import numpy as np
 from dotenv import load_dotenv
 import streamlit as st
 from streamlit_pills import pills
-import json
+import os
+from pathlib import Path
 
+from langchain_community.document_loaders import PyPDFLoader
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -22,6 +24,7 @@ from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.vectorstores import Chroma
+from langchain_community.document_loaders import PyPDFLoader
 
 ### Layout ------------------------------------------------------------------------------------
 if "center" not in st.session_state:
@@ -49,6 +52,7 @@ OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 pw = st.secrets["password"]
 
 ### Function --------------------------------------------------------------------------
+
 def calculate_time_delta(start, end):
     delta = end - start
     return delta.total_seconds()
@@ -67,15 +71,23 @@ def open_chat(query, model_name):
     res = runnable.invoke(query)
     return res
 
-def make_retriever(context):
+def make_retriever_from_text(context):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     docs = text_splitter.split_text(context)
     embeddings_model = OpenAIEmbeddings()
-    vectorstore = Chroma.from_texts(docs, embeddings_model, persist_directory="./chroma_db")
+    vectorstore = Chroma.from_texts(docs, embeddings_model, persist_directory="./chroma_db_text")
     retriever1 = vectorstore.as_retriever()
     return retriever1
 
-def rag_chat(query, retriever, model_name):
+def make_retriever_from_pdf(pdf):
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+    docs = text_splitter.split_documents(pdf)
+    embeddings_model = OpenAIEmbeddings()
+    vectorstore = Chroma.from_documents(docs, embeddings_model, persist_directory="./chroma_db_pdf")
+    retriever1 = vectorstore.as_retriever()
+    return retriever1
+
+def quick_rag_chat(query, retriever, model_name):
     # system_prompt = (
     #     "You are an assistant for question-answering tasks. "
     #     "Use the following pieces of retrieved context to answer "
@@ -123,10 +135,13 @@ if "time_delta" not in st.session_state: st.session_state.time_delta = ""
 if "rag_time_delta" not in st.session_state: st.session_state.rag_time_delta = ""
 if "messages" not in st.session_state: st.session_state.messages = [{"role": "assistant", "content": "How can I help you?"}]
 if "rag_messages" not in st.session_state: st.session_state.rag_messages = [{"role": "assistant", "content": "How can I help you?"}]
+if "rag_messages_pdf" not in st.session_state: st.session_state.rag_messages_pdf = [{"role": "assistant", "content": "How can I help you?"}]
 if "chat_history" not in st.session_state: st.session_state.chat_history = ""
 if "model_name" not in st.session_state: st.session_state.model_name = ""
 if "retriever" not in st.session_state: st.session_state.retriever = ""
+if "retriever_pdf" not in st.session_state: st.session_state.retriever_pdf = ""
 if "retrieval_docs" not in st.session_state: st.session_state.retrieval_docs = ""
+if "retrieval_docs_pdf" not in st.session_state: st.session_state.retrieval_docs_pdf = ""
 if "prev_questions" not in st.session_state: st.session_state.prev_questions = []
 
 example_text = '''
@@ -158,22 +173,16 @@ if __name__ == "__main__":
             st.session_state.prev_questions = []
         st.markdown("---")
 
-        service_type = st.radio("🐬 Services", options=["Open Chat", "Quick Rag",])
+        service_type = st.radio("🐬 Services", options=["Open Chat", "Text Rag", "PDF Rag"])
         st.markdown("---")
 
-        if service_type == "Open Chat":
-            llm1 = st.radio("🐬 **Select LLM**", options=["Llama3.1(8B)", "Gemma2(9B)", "Llama3.1(70B)"], index=0, key="dsfv", help="Bigger LLM returns better answers but takes more time")
-            st.session_state.model_name = model_name_dict[llm1]
-            st.session_state.model_name
-            st.markdown("")
-        elif service_type == "Quick Rag":
-            llm2 = st.radio("🐬 **Select LLM**", options=["Llama3.1(8B)", "Gemma2(9B)", "Llama3.1(70B)"], index=0, key="dsfv", help="Bigger LLM returns better answers but takes more time")
-            st.session_state.model_name = model_name_dict[llm2]
-            st.markdown("")
+        llm1 = st.radio("🐬 **Select LLM**", options=["Llama3.1(8B)", "Gemma2(9B)", "Llama3.1(70B)"], index=0, key="dsfv", help="Bigger LLM returns better answers but takes more time")
+        st.session_state.model_name = model_name_dict[llm1]
+        st.session_state.model_name
         st.markdown("---")
 
     ## Main -----------------------------------------------------------------------------------------------
-    st.title("AI Jarvis v1")
+    st.title("🧭 :blue[AI Jarvis v1]")
     st.checkbox("🐋 Wide Layout", key="center", value=st.session_state.get("center", False))
     st.markdown("---")
     
@@ -206,27 +215,26 @@ if __name__ == "__main__":
                 selected = pills("Previous Questions", st.session_state.prev_questions)
         except: pass
 
-    elif service_type == "Quick Rag" and st.session_state.login_status:
-        with st.expander("Retriever", expanded=True): 
-            context_input = st.text_area("Reference Knowledge", example_text, key="uyhv", height=200)
+    elif service_type == "Text Rag" and st.session_state.login_status:
+        with st.expander("Quick Reference Texts", expanded=True): 
+            context_input = st.text_area("", example_text, key="uyhv", height=200)
             with st.spinner("Processing.."):
                 if st.button("Create Retriever"):
                     try:
-                        vectordb = Chroma(persist_directory="chroma_db", embedding_function=OpenAIEmbeddings())
+                        vectordb = Chroma(persist_directory="chroma_db_text", embedding_function=OpenAIEmbeddings())
                         vectordb._client.delete_collection(vectordb._collection.name)
                     except: pass
-                    st.session_state.retriever  = make_retriever(context_input)
+                    st.session_state.retriever  = make_retriever_from_text(context_input)
 
             if st.session_state.retriever:
                 st.info(f"Retriever is created ---->   {st.session_state.retriever}")
 
         text_input2 = st.chat_input("Say something")
         if text_input2:
-            # st.session_state.prev_questions.append(text_input2)
             st.session_state.chat_history = st.session_state.chat_history + "\n" + text_input2 + "\n"
             rag_start_time = datetime.now()
             st.session_state.rag_messages.append({"role": "user", "content": text_input2})
-            retrieval_docs, output2 = rag_chat(text_input2, st.session_state.retriever, st.session_state.model_name)
+            retrieval_docs, output2 = quick_rag_chat(text_input2, st.session_state.retriever, st.session_state.model_name)
             st.session_state.rag_messages.append({"role": "assistant", "content": output2})
             st.session_state.retrieval_docs = retrieval_docs
             rag_end_time = datetime.now()
@@ -251,6 +259,62 @@ if __name__ == "__main__":
             else: 
                 selected = pills("Previous Questions", st.session_state.prev_questions)
         except: pass
+    
+    elif service_type == "PDF Rag" and st.session_state.login_status:
+        with st.expander("📎:green[**Upload Your PDF**]", expanded=True):
+            parent_dir = Path(__file__).parent
+            base_dir = str(parent_dir) + "\data"
+            uploaded_file = st.file_uploader("", type=['PDF', 'pdf'])
+            btn1 = st.button("Create PDF Retreiver", type='secondary')
+            try:
+                if uploaded_file and btn1:
+                    st.session_state.retrieval_docs_pdf = ""
+                    if not os.path.exists(base_dir):
+                        os.makedirs(base_dir)
 
+                    files = os.listdir(base_dir)
+                    for file in files:
+                        file_path = os.path.join(base_dir, file)
+                        if os.path.isfile(file_path):
+                            os.remove(file_path)
+
+                    temp_dir = base_dir 
+                    file_path = os.path.join(temp_dir, uploaded_file.name)
+                    with open(file_path, "wb") as f:
+                        f.write(uploaded_file.getvalue())
+                    loader = PyPDFLoader(file_path)
+                    docs = loader.load()
+                    try:
+                        vectordb = Chroma(persist_directory="chroma_db_pdf", embedding_function=OpenAIEmbeddings())
+                        vectordb._client.delete_collection(vectordb._collection.name)
+                    except: pass
+                    st.session_state.retriever_pdf = make_retriever_from_pdf(docs)
+                st.session_state.retriever_pdf
+            except: st.warning("There are some errors in your PDF")
+
+        text_input3 = st.chat_input("Say something")
+        if text_input3:
+            st.session_state.chat_history = st.session_state.chat_history + "\n" + text_input3 + "\n"
+            rag_start_time = datetime.now()
+            st.session_state.rag_messages_pdf.append({"role": "user", "content": text_input3})
+            retrieval_docs3, output3 = quick_rag_chat(text_input3, st.session_state.retriever_pdf, st.session_state.model_name)
+            st.session_state.rag_messages_pdf.append({"role": "assistant", "content": output3})
+            st.session_state.retrieval_docs_pdf = retrieval_docs3
+            rag_end_time = datetime.now()
+            st.session_state.rag_time_delta = calculate_time_delta(rag_start_time, rag_end_time)
+            st.session_state.chat_history = st.session_state.chat_history + "\n" + output3 + "\n"
+            
+        for msg in st.session_state.rag_messages_pdf:
+            if msg["role"] == "user":
+                st.chat_message(msg["role"], avatar="🐬").write(msg["content"])
+            else:
+                st.chat_message(msg["role"], avatar="🤖").write(msg["content"])
+                
+        with st.expander("Retrieval Docs"): st.session_state.retrieval_docs_pdf
+
+        if st.session_state.rag_time_delta: 
+            st.success(f"⏱️ Latency(Sec) : {np.round(st.session_state.rag_time_delta,2)}  /  Total Q&A Length(Char): {len(st.session_state.chat_history)}")
+
+    
     else: pass
     
