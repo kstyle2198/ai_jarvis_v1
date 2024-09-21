@@ -47,6 +47,49 @@ st.markdown(
             unsafe_allow_html=True,
         )
 
+
+import base64
+@st.fragment
+def get_img_as_base64(file):
+    with open(file, "rb") as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
+
+sidebar_bg = get_img_as_base64("bgimg2.jpg")
+main_bg = get_img_as_base64("bgimg3.jpg")
+
+page_bg_img = f"""
+<style>
+[data-testid="stAppViewContainer"] > .main {{
+background-image: url("data:image/png;base64,{main_bg}");
+background-size: 110%;
+background-position: top left;
+background-repeat: no-repeat;
+background-attachment: local;
+}}
+
+[data-testid="stSidebar"] > div:first-child {{
+background-image: url("data:image/png;base64,{sidebar_bg}");
+background-size: 100%;
+background-position: center;
+background-repeat: no-repeat;
+background-attachment: fixed;
+}}
+
+[data-testid="stHeader"] {{
+background: rgba(0,0,0,0);
+}}
+
+[data-testid="stToolbar"] {{
+right: 2rem;
+}}
+</style>
+"""
+
+st.markdown(page_bg_img, unsafe_allow_html=True)
+
+
 ### API KEY ------------------------------------------------------------------------
 load_dotenv()
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
@@ -175,6 +218,8 @@ The BIS published the rule regarding regulations on export items under four cate
 if __name__ == "__main__":
     ### Sidebar -----------------------------------------------------------------------------------------------------
     with st.sidebar:
+        
+
         st.title("⚓ AI Jarvis v1")
         st.markdown("")
 
@@ -235,9 +280,10 @@ if __name__ == "__main__":
         try:
             if text_input1 and text_input1 not in st.session_state.prev_questions:
                 st.session_state.prev_questions.append(text_input1)
-                selected = pills("Previous Questions", st.session_state.prev_questions)
+                # selected = pills("Previous Questions", st.session_state.prev_questions)
             else: 
-                selected = pills("Previous Questions", st.session_state.prev_questions)
+                pass
+                # selected = pills("Previous Questions", st.session_state.prev_questions)
         except: pass
 
     elif service_type == "Text Rag" and st.session_state.login_status:
@@ -280,9 +326,10 @@ if __name__ == "__main__":
         try:
             if text_input2 and text_input2 not in st.session_state.prev_questions:
                 st.session_state.prev_questions.append(text_input2)
-                selected = pills("Previous Questions", st.session_state.prev_questions)
+                # selected = pills("Previous Questions", st.session_state.prev_questions)
             else: 
-                selected = pills("Previous Questions", st.session_state.prev_questions)
+                pass
+                # selected = pills("Previous Questions", st.session_state.prev_questions)
         except: pass
     
     elif service_type == "PDF Rag" and st.session_state.login_status:
