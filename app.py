@@ -1,7 +1,7 @@
 ### [시작] Delploy 할때만 실행되는 코드 #####################
-__import__('pysqlite3')
-import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+# __import__('pysqlite3')
+# import sys
+# sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 ### [종료 ] Delploy 할때만 실행되는 코드 #####################
 
 ###  pysqlite3-binary ---> requirements.txt 에 추가
@@ -63,10 +63,10 @@ page_bg_img = f"""
 <style>
 [data-testid="stAppViewContainer"] > .main {{
 background-image: url("data:image/png;base64,{main_bg}");
-background-size: 110%;
+background-size: 100%;
 background-position: top left;
 background-repeat: no-repeat;
-background-attachment: local;
+background-attachment: fixed;
 }}
 
 [data-testid="stSidebar"] > div:first-child {{
