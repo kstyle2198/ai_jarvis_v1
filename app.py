@@ -1,7 +1,7 @@
 ### [시작] Delploy 할때만 실행되는 코드 #####################
-__import__('pysqlite3')
-import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+# __import__('pysqlite3')
+# import sys
+# sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 ### [종료 ] Delploy 할때만 실행되는 코드 #####################
 
 ###  pysqlite3-binary ---> requirements.txt 에 추가
@@ -307,7 +307,7 @@ if __name__ == "__main__":
             st.session_state.rag_messages.append({"role": "user", "content": text_input2})
             retrieval_docs, output2 = quick_rag_chat(text_input2, st.session_state.retriever_text, st.session_state.model_name, st.session_state.json_style)
             st.session_state.rag_messages.append({"role": "assistant", "content": output2})
-            st.session_state.retrieval_docs = retrieval_docs
+            st.session_state.retrieval_docs_text = retrieval_docs
             rag_end_time = datetime.now()
             st.session_state.rag_time_delta = calculate_time_delta(rag_start_time, rag_end_time)
             st.session_state.chat_history = st.session_state.chat_history + "\n" + output2 + "\n"
@@ -339,29 +339,30 @@ if __name__ == "__main__":
             uploaded_file = st.file_uploader("", type=['PDF', 'pdf'])
             btn1 = st.button("Create PDF Retreiver", type='secondary')
             try:
-                if uploaded_file and btn1:
-                    st.session_state.retrieval_docs_pdf = ""
-                    if not os.path.exists(base_dir):
-                        os.makedirs(base_dir)
+                with st.spinner("processing..."):
+                    if uploaded_file and btn1:
+                        st.session_state.retrieval_docs_pdf = ""
+                        if not os.path.exists(base_dir):
+                            os.makedirs(base_dir)
 
-                    files = os.listdir(base_dir)
-                    for file in files:
-                        file_path = os.path.join(base_dir, file)
-                        if os.path.isfile(file_path):
-                            os.remove(file_path)
+                        files = os.listdir(base_dir)
+                        for file in files:
+                            file_path = os.path.join(base_dir, file)
+                            if os.path.isfile(file_path):
+                                os.remove(file_path)
 
-                    temp_dir = base_dir 
-                    file_path = os.path.join(temp_dir, uploaded_file.name)
-                    with open(file_path, "wb") as f:
-                        f.write(uploaded_file.getvalue())
-                    loader = PyPDFLoader(file_path)
-                    docs = loader.load()
-                    try:
-                        vectordb = Chroma(persist_directory="chroma_db_pdf", embedding_function=OpenAIEmbeddings())
-                        vectordb._client.delete_collection(vectordb._collection.name)
-                    except: pass
-                    st.session_state.retriever_pdf = make_retriever_from_pdf(docs)
-                st.info(st.session_state.retriever_pdf)
+                        temp_dir = base_dir 
+                        file_path = os.path.join(temp_dir, uploaded_file.name)
+                        with open(file_path, "wb") as f:
+                            f.write(uploaded_file.getvalue())
+                        loader = PyPDFLoader(file_path)
+                        docs = loader.load()
+                        try:
+                            vectordb = Chroma(persist_directory="chroma_db_pdf", embedding_function=OpenAIEmbeddings())
+                            vectordb._client.delete_collection(vectordb._collection.name)
+                        except: pass
+                        st.session_state.retriever_pdf = make_retriever_from_pdf(docs)
+                    st.info(st.session_state.retriever_pdf)
             except: st.warning("There are some errors in your PDF")
 
         text_input3 = st.chat_input("Say something")
