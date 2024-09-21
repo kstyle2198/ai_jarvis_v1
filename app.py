@@ -1,7 +1,7 @@
 ### [시작] Delploy 할때만 실행되는 코드 #####################
-__import__('pysqlite3')
-import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+# __import__('pysqlite3')
+# import sys
+# sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 ### [종료 ] Delploy 할때만 실행되는 코드 #####################
 
 ###  pysqlite3-binary ---> requirements.txt 에 추가
@@ -154,12 +154,15 @@ if "rag_messages_pdf" not in st.session_state: st.session_state.rag_messages_pdf
 if "rag_messages_url" not in st.session_state: st.session_state.rag_messages_url = [{"role": "assistant", "content": "How can I help you?"}]
 if "chat_history" not in st.session_state: st.session_state.chat_history = ""
 if "model_name" not in st.session_state: st.session_state.model_name = ""
-if "retriever" not in st.session_state: st.session_state.retriever = ""
+
+if "retriever_text" not in st.session_state: st.session_state.retriever_text = ""
 if "retriever_pdf" not in st.session_state: st.session_state.retriever_pdf = ""
-if "retrieval_docs" not in st.session_state: st.session_state.retrieval_docs = ""
-if "retrieval_url" not in st.session_state: st.session_state.retrieval_url = ""
+if "retriever_url" not in st.session_state: st.session_state.retriever_url = ""
+
+if "retrieval_docs_text" not in st.session_state: st.session_state.retrieval_docs_text = ""
 if "retrieval_docs_pdf" not in st.session_state: st.session_state.retrieval_docs_pdf = ""
 if "retrieval_docs_url" not in st.session_state: st.session_state.retrieval_docs_url = ""
+
 if "prev_questions" not in st.session_state: st.session_state.prev_questions = []
 
 example_text = '''
@@ -197,9 +200,9 @@ if __name__ == "__main__":
 
         st.markdown("---")
 
-        llm1 = st.radio("🐬 **Select LLM**", options=["Llama3.1(8B)", "Gemma2(9B)", "Llama3.1(70B)"], index=0, key="dsfv", help="Bigger LLM returns better answers but takes more time")
+        llm1 = st.radio("🐬 **Select LLM**", options=["Llama3.1(8B)", "Gemma2(9B)", "Llama3.1(70B)"], index=0, key="dsfv", help="Using Groq API")
         st.session_state.model_name = model_name_dict[llm1]
-        st.session_state.model_name
+        st.warning(st.session_state.model_name)
         st.markdown("---")
 
 
@@ -246,17 +249,17 @@ if __name__ == "__main__":
                         vectordb = Chroma(persist_directory="chroma_db_text", embedding_function=OpenAIEmbeddings())
                         vectordb._client.delete_collection(vectordb._collection.name)
                     except: pass
-                    st.session_state.retriever  = make_retriever_from_text(context_input)
+                    st.session_state.retriever_text  = make_retriever_from_text(context_input)
 
-            if st.session_state.retriever:
-                st.info(f"Retriever is created ---->   {st.session_state.retriever}")
+            if st.session_state.retriever_text:
+                st.info(st.session_state.retriever_text)
 
         text_input2 = st.chat_input("Say something")
         if text_input2:
             st.session_state.chat_history = st.session_state.chat_history + "\n" + text_input2 + "\n"
             rag_start_time = datetime.now()
             st.session_state.rag_messages.append({"role": "user", "content": text_input2})
-            retrieval_docs, output2 = quick_rag_chat(text_input2, st.session_state.retriever, st.session_state.model_name, st.session_state.json_style)
+            retrieval_docs, output2 = quick_rag_chat(text_input2, st.session_state.retriever_text, st.session_state.model_name, st.session_state.json_style)
             st.session_state.rag_messages.append({"role": "assistant", "content": output2})
             st.session_state.retrieval_docs = retrieval_docs
             rag_end_time = datetime.now()
@@ -269,7 +272,7 @@ if __name__ == "__main__":
             else:
                 st.chat_message(msg["role"], avatar="🤖").write(msg["content"])
                 
-        with st.expander("Retrieval Docs"): st.session_state.retrieval_docs
+        with st.expander("Retrieval Docs"): st.session_state.retrieval_docs_text
 
         if st.session_state.rag_time_delta: 
             st.success(f"⏱️ Latency(Sec) : {np.round(st.session_state.rag_time_delta,2)}  /  Total Q&A Length(Char): {len(st.session_state.chat_history)}")
@@ -311,7 +314,7 @@ if __name__ == "__main__":
                         vectordb._client.delete_collection(vectordb._collection.name)
                     except: pass
                     st.session_state.retriever_pdf = make_retriever_from_pdf(docs)
-                st.session_state.retriever_pdf
+                st.info(st.session_state.retriever_pdf)
             except: st.warning("There are some errors in your PDF")
 
         text_input3 = st.chat_input("Say something")
@@ -347,8 +350,8 @@ if __name__ == "__main__":
                 vectordb = Chroma(persist_directory="chroma_db_url", embedding_function=OpenAIEmbeddings())
                 vectordb._client.delete_collection(vectordb._collection.name)
             except: pass
-            st.session_state.retriever_pdf = make_retriever_from_pdf(docs)
-        st.session_state.retriever_pdf
+            st.session_state.retriever_url = make_retriever_from_url(docs)
+        st.info(st.session_state.retriever_url)
 
 
         text_input4 = st.chat_input("Say something")
@@ -356,7 +359,7 @@ if __name__ == "__main__":
             st.session_state.chat_history = st.session_state.chat_history + "\n" + text_input4 + "\n"
             rag_start_time = datetime.now()
             st.session_state.rag_messages_url.append({"role": "user", "content": text_input4})
-            retrieval_docs4, output4 = quick_rag_chat(text_input4, st.session_state.retriever_pdf, st.session_state.model_name, st.session_state.json_style)
+            retrieval_docs4, output4 = quick_rag_chat(text_input4, st.session_state.retriever_url, st.session_state.model_name, st.session_state.json_style)
             st.session_state.rag_messages_url.append({"role": "assistant", "content": output4})
             st.session_state.retrieval_docs_url = retrieval_docs4
             rag_end_time = datetime.now()
@@ -369,7 +372,7 @@ if __name__ == "__main__":
             else:
                 st.chat_message(msg["role"], avatar="🤖").write(msg["content"])
                 
-        with st.expander("Retrieval Docs"): st.session_state.retrieval_url
+        with st.expander("Retrieval Docs"): st.session_state.retrieval_docs_url
 
         if st.session_state.rag_time_delta: 
             st.success(f"⏱️ Latency(Sec) : {np.round(st.session_state.rag_time_delta,2)}  /  Total Q&A Length(Char): {len(st.session_state.chat_history)}")

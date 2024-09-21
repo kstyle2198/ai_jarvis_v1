@@ -1,4 +1,6 @@
-myenv
+.venv
+poetry.lock
+pyproject.toml
 .streamlit
 .env
 chroma_db
