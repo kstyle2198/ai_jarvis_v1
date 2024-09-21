@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 
 from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import WebBaseLoader
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -25,6 +26,7 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.vectorstores import Chroma
 from langchain_community.document_loaders import PyPDFLoader
+
 
 ### Layout ------------------------------------------------------------------------------------
 if "center" not in st.session_state:
@@ -87,30 +89,42 @@ def make_retriever_from_pdf(pdf):
     retriever1 = vectorstore.as_retriever()
     return retriever1
 
-def quick_rag_chat(query, retriever, model_name):
-    # system_prompt = (
-    #     "You are an assistant for question-answering tasks. "
-    #     "Use the following pieces of retrieved context to answer "
-    #     "the question. If you don't know the answer, say that you "
-    #     "don't know. Use three sentences maximum and keep the "
-    #     "answer concise."
-    #     "\n\n"
-    #     "{context}"
-    #     )
-    system_prompt = ('''
-You are an assistant for question-answering tasks. 
-Use the following pieces of retrieved context to answer the question. 
-If you don't know the answer, say that you don't know. Use three sentences maximum and keep the answer concise.
+def make_retriever_from_url(url):
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+    docs = text_splitter.split_documents(url)
+    embeddings_model = OpenAIEmbeddings()
+    vectorstore = Chroma.from_documents(docs, embeddings_model, persist_directory="./chroma_db_url")
+    retriever1 = vectorstore.as_retriever()
+    return retriever1
 
-{context}
-Please provide your answer in the following JSON format: 
-{{
-"answer": "Your detailed answer here",\n
-"keywords: [list of important keywords from the context] \n
-"sources": "Direct sentences or paragraphs from the context that support your answers. ONLY RELEVANT TEXT DIRECTLY FROM THE DOCUMENTS. DO NOT ADD ANYTHING EXTRA. DO NOT INVENT ANYTHING."
-}}
-The JSON must be a valid json format and can be read with json.loads() in Python. Answer:
-                     ''')
+def quick_rag_chat(query, retriever, model_name, json_style:bool):
+
+    if json_style:
+        system_prompt = ('''
+    You are an assistant for question-answering tasks. 
+    Use the following pieces of retrieved context to answer the question. 
+    If you don't know the answer, say that you don't know. Use three sentences maximum and keep the answer concise.
+
+    {context}
+    Please provide your answer in the following JSON format: 
+    {{
+    "answer": "Your detailed answer here",\n
+    "keywords: [list of important keywords from the context] \n
+    "sources": "Direct sentences or paragraphs from the context that support your answers. ONLY RELEVANT TEXT DIRECTLY FROM THE DOCUMENTS. DO NOT ADD ANYTHING EXTRA. DO NOT INVENT ANYTHING."
+    }}
+    The JSON must be a valid json format and can be read with json.loads() in Python. Answer:
+                        ''')
+    
+    else: 
+        system_prompt = (
+            "You are an assistant for question-answering tasks. "
+            "Use the following pieces of retrieved context to answer "
+            "the question. If you don't know the answer, say that you "
+            "don't know. Use three sentences maximum and keep the "
+            "answer concise."
+            "\n\n"
+            "{context}"
+            )
 
     prompt = ChatPromptTemplate.from_messages(
         [
@@ -131,17 +145,21 @@ The JSON must be a valid json format and can be read with json.loads() in Python
 model_name_dict = {"Llama3.1(8B)":"llama-3.1-8b-instant", "Gemma2(9B)":"gemma2-9b-it", "Llama3.1(70B)":"llama-3.1-70b-versatile"}
 
 if "login_status" not in st.session_state: st.session_state.login_status = False
+if "json_style" not in st.session_state: st.session_state.json_style = True
 if "time_delta" not in st.session_state: st.session_state.time_delta = ""
 if "rag_time_delta" not in st.session_state: st.session_state.rag_time_delta = ""
 if "messages" not in st.session_state: st.session_state.messages = [{"role": "assistant", "content": "How can I help you?"}]
 if "rag_messages" not in st.session_state: st.session_state.rag_messages = [{"role": "assistant", "content": "How can I help you?"}]
 if "rag_messages_pdf" not in st.session_state: st.session_state.rag_messages_pdf = [{"role": "assistant", "content": "How can I help you?"}]
+if "rag_messages_url" not in st.session_state: st.session_state.rag_messages_url = [{"role": "assistant", "content": "How can I help you?"}]
 if "chat_history" not in st.session_state: st.session_state.chat_history = ""
 if "model_name" not in st.session_state: st.session_state.model_name = ""
 if "retriever" not in st.session_state: st.session_state.retriever = ""
 if "retriever_pdf" not in st.session_state: st.session_state.retriever_pdf = ""
 if "retrieval_docs" not in st.session_state: st.session_state.retrieval_docs = ""
+if "retrieval_url" not in st.session_state: st.session_state.retrieval_url = ""
 if "retrieval_docs_pdf" not in st.session_state: st.session_state.retrieval_docs_pdf = ""
+if "retrieval_docs_url" not in st.session_state: st.session_state.retrieval_docs_url = ""
 if "prev_questions" not in st.session_state: st.session_state.prev_questions = []
 
 example_text = '''
@@ -173,13 +191,17 @@ if __name__ == "__main__":
             st.session_state.prev_questions = []
         st.markdown("---")
 
-        service_type = st.radio("🐬 Services", options=["Open Chat", "Text Rag", "PDF Rag"])
+        service_type = st.radio("🐬 Services", options=["Open Chat", "Text Rag", "PDF Rag", "URL Rag"])
+        st.markdown("")
+        st.session_state.json_style = st.checkbox("Json Type Rag Response", value=True)
+
         st.markdown("---")
 
         llm1 = st.radio("🐬 **Select LLM**", options=["Llama3.1(8B)", "Gemma2(9B)", "Llama3.1(70B)"], index=0, key="dsfv", help="Bigger LLM returns better answers but takes more time")
         st.session_state.model_name = model_name_dict[llm1]
         st.session_state.model_name
         st.markdown("---")
+
 
     ## Main -----------------------------------------------------------------------------------------------
     st.title("🧭 :blue[AI Jarvis v1]")
@@ -234,7 +256,7 @@ if __name__ == "__main__":
             st.session_state.chat_history = st.session_state.chat_history + "\n" + text_input2 + "\n"
             rag_start_time = datetime.now()
             st.session_state.rag_messages.append({"role": "user", "content": text_input2})
-            retrieval_docs, output2 = quick_rag_chat(text_input2, st.session_state.retriever, st.session_state.model_name)
+            retrieval_docs, output2 = quick_rag_chat(text_input2, st.session_state.retriever, st.session_state.model_name, st.session_state.json_style)
             st.session_state.rag_messages.append({"role": "assistant", "content": output2})
             st.session_state.retrieval_docs = retrieval_docs
             rag_end_time = datetime.now()
@@ -297,7 +319,7 @@ if __name__ == "__main__":
             st.session_state.chat_history = st.session_state.chat_history + "\n" + text_input3 + "\n"
             rag_start_time = datetime.now()
             st.session_state.rag_messages_pdf.append({"role": "user", "content": text_input3})
-            retrieval_docs3, output3 = quick_rag_chat(text_input3, st.session_state.retriever_pdf, st.session_state.model_name)
+            retrieval_docs3, output3 = quick_rag_chat(text_input3, st.session_state.retriever_pdf, st.session_state.model_name, st.session_state.json_style)
             st.session_state.rag_messages_pdf.append({"role": "assistant", "content": output3})
             st.session_state.retrieval_docs_pdf = retrieval_docs3
             rag_end_time = datetime.now()
@@ -315,6 +337,44 @@ if __name__ == "__main__":
         if st.session_state.rag_time_delta: 
             st.success(f"⏱️ Latency(Sec) : {np.round(st.session_state.rag_time_delta,2)}  /  Total Q&A Length(Char): {len(st.session_state.chat_history)}")
 
-    
+    elif service_type == "URL Rag" and st.session_state.login_status:
+        url = st.text_input("🕸️ :green[**URL**]")
+        btn3 = st.button("Create Retriever3")
+        if url and btn3:
+            loader = WebBaseLoader(url)
+            docs = loader.load()
+            try:
+                vectordb = Chroma(persist_directory="chroma_db_url", embedding_function=OpenAIEmbeddings())
+                vectordb._client.delete_collection(vectordb._collection.name)
+            except: pass
+            st.session_state.retriever_pdf = make_retriever_from_pdf(docs)
+        st.session_state.retriever_pdf
+
+
+        text_input4 = st.chat_input("Say something")
+        if text_input4:
+            st.session_state.chat_history = st.session_state.chat_history + "\n" + text_input4 + "\n"
+            rag_start_time = datetime.now()
+            st.session_state.rag_messages_url.append({"role": "user", "content": text_input4})
+            retrieval_docs4, output4 = quick_rag_chat(text_input4, st.session_state.retriever_pdf, st.session_state.model_name, st.session_state.json_style)
+            st.session_state.rag_messages_url.append({"role": "assistant", "content": output4})
+            st.session_state.retrieval_docs_url = retrieval_docs4
+            rag_end_time = datetime.now()
+            st.session_state.rag_time_delta = calculate_time_delta(rag_start_time, rag_end_time)
+            st.session_state.chat_history = st.session_state.chat_history + "\n" + output4 + "\n"
+            
+        for msg in st.session_state.rag_messages_url:
+            if msg["role"] == "user":
+                st.chat_message(msg["role"], avatar="🐬").write(msg["content"])
+            else:
+                st.chat_message(msg["role"], avatar="🤖").write(msg["content"])
+                
+        with st.expander("Retrieval Docs"): st.session_state.retrieval_url
+
+        if st.session_state.rag_time_delta: 
+            st.success(f"⏱️ Latency(Sec) : {np.round(st.session_state.rag_time_delta,2)}  /  Total Q&A Length(Char): {len(st.session_state.chat_history)}")
+
+        pass 
+
     else: pass
     
