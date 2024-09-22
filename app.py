@@ -297,8 +297,8 @@ if __name__ == "__main__":
     ## Main -----------------------------------------------------------------------------------------------
 
     parent_dir = Path(__file__).parent
-    main_image_path = str(parent_dir) +"\main_images"
-    sidebar_image_path = str(parent_dir) +"\sidebar_images"
+    main_image_path = str(parent_dir) +"/main_images"
+    sidebar_image_path = str(parent_dir) +"/sidebar_images"
     # if not os.path.exists(main_image_path):
     #     os.makedirs(main_image_path)
     # if not os.path.exists(sidebar_image_path):
