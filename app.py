@@ -13,6 +13,7 @@ import streamlit as st
 from streamlit_pills import pills
 import os
 from pathlib import Path
+import random
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.document_loaders import WebBaseLoader
@@ -26,6 +27,7 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.vectorstores import Chroma
 from langchain_community.document_loaders import PyPDFLoader
+from groq import Groq
 
 
 ### Layout ------------------------------------------------------------------------------------
@@ -47,6 +49,12 @@ st.markdown(
             unsafe_allow_html=True,
         )
 
+main_image_path = ".\main_images"
+sidebar_image_path = ".\sidebar_images"
+sidebar_image_list = [os.path.join(sidebar_image_path,f) for f in os.listdir(sidebar_image_path) if os.path.isfile(os.path.join(sidebar_image_path, f))]
+sidebar_img = random.choice(sidebar_image_list)
+main_image_list = [os.path.join(main_image_path,f) for f in os.listdir(main_image_path) if os.path.isfile(os.path.join(main_image_path, f))]
+main_img = random.choice(main_image_list)
 
 import base64
 @st.fragment
@@ -55,39 +63,38 @@ def get_img_as_base64(file):
         data = f.read()
     return base64.b64encode(data).decode()
 
+sidebar_bg = get_img_as_base64(f"{sidebar_img}")
+main_bg = get_img_as_base64(f"{main_img}")
 
-sidebar_bg = get_img_as_base64("bgimg2.jpg")
-main_bg = get_img_as_base64("bgimg3.jpg")
+def apply_bg_image(main_bg, sidebar_bg):
+    page_bg_img = f"""
+    <style>
+    [data-testid="stAppViewContainer"] > .main {{
+    background-image: url("data:image/png;base64,{main_bg}");
+    background-size: 100%;
+    background-position: top left;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    }}
 
-page_bg_img = f"""
-<style>
-[data-testid="stAppViewContainer"] > .main {{
-background-image: url("data:image/png;base64,{main_bg}");
-background-size: 100%;
-background-position: top left;
-background-repeat: no-repeat;
-background-attachment: fixed;
-}}
+    [data-testid="stSidebar"] > div:first-child {{
+    background-image: url("data:image/png;base64,{sidebar_bg}");
+    background-size: 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    }}
 
-[data-testid="stSidebar"] > div:first-child {{
-background-image: url("data:image/png;base64,{sidebar_bg}");
-background-size: 100%;
-background-position: center;
-background-repeat: no-repeat;
-background-attachment: fixed;
-}}
+    [data-testid="stHeader"] {{
+    background: rgba(0,0,0,0);
+    }}
 
-[data-testid="stHeader"] {{
-background: rgba(0,0,0,0);
-}}
-
-[data-testid="stToolbar"] {{
-right: 2rem;
-}}
-</style>
-"""
-
-st.markdown(page_bg_img, unsafe_allow_html=True)
+    [data-testid="stToolbar"] {{
+    right: 2rem;
+    }}
+    </style>
+    """
+    st.markdown(page_bg_img, unsafe_allow_html=True)
 
 
 ### API KEY ------------------------------------------------------------------------
@@ -101,6 +108,39 @@ pw = st.secrets["password"]
 def calculate_time_delta(start, end):
     delta = end - start
     return delta.total_seconds()
+
+def encode_image(image_path):
+  with open(image_path, "rb") as image_file:
+    return base64.b64encode(image_file.read()).decode('utf-8')
+
+def image_chat(image_path, text, model_name):
+    base64_image = encode_image(image_path)
+    client = Groq()
+    chat_completion  = client.chat.completions.create(
+        model=model_name,
+        messages=[
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "What's in this image?"},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{base64_image}",
+                    },
+                },
+            ],
+        }
+    ],
+        temperature=0,
+        max_tokens=1024,
+        top_p=1,
+        stream=False,
+        stop=None,
+    )
+    print(chat_completion.choices[0].message.content)
+    return chat_completion.choices[0].message.content
+
 
 def open_chat(query, model_name):
     model = ChatGroq(temperature=0, model_name= model_name)   # "llama-3.1-8b-instant","llama-guard-3-8b", "gemma2-9b-it","llama-3.1-70b-versatile",
@@ -185,7 +225,10 @@ def quick_rag_chat(query, retriever, model_name, json_style:bool):
 
     
 ### Variables ---------------------------------------------------------------------------------------------
-model_name_dict = {"Llama3.1(8B)":"llama-3.1-8b-instant", "Gemma2(9B)":"gemma2-9b-it", "Llama3.1(70B)":"llama-3.1-70b-versatile"}
+model_name_dict = {"Llama3.1(8B)":"llama-3.1-8b-instant", 
+                   "Gemma2(9B)":"gemma2-9b-it", 
+                   "Llama3.1(70B)":"llama-3.1-70b-versatile",
+                   "Llava_v1.5(7B)":"llava-v1.5-7b-4096-preview"}
 
 if "login_status" not in st.session_state: st.session_state.login_status = False
 if "json_style" not in st.session_state: st.session_state.json_style = True
@@ -197,6 +240,7 @@ if "rag_messages_pdf" not in st.session_state: st.session_state.rag_messages_pdf
 if "rag_messages_url" not in st.session_state: st.session_state.rag_messages_url = [{"role": "assistant", "content": "How can I help you?"}]
 if "chat_history" not in st.session_state: st.session_state.chat_history = ""
 if "model_name" not in st.session_state: st.session_state.model_name = ""
+if "file_path" not in st.session_state: st.session_state.file_path = ""
 
 if "retriever_text" not in st.session_state: st.session_state.retriever_text = ""
 if "retriever_pdf" not in st.session_state: st.session_state.retriever_pdf = ""
@@ -216,14 +260,16 @@ The BIS published the rule regarding regulations on export items under four cate
 
 
 if __name__ == "__main__":
+    
+
     ### Sidebar -----------------------------------------------------------------------------------------------------
     with st.sidebar:
         
-
-        st.title("⚓ AI Jarvis v1")
+        st.title("⚓ :gray[Menu]")
+        st.subheader("AI Assistance for you")
         st.markdown("")
 
-        password = st.text_input("🔑 Password", type="password")
+        password = st.text_input("🔑 **Password**", type="password")
         col11, col12 = st.columns(2)
         with col11: btn_login=st.button("Login", use_container_width=True, help="1234")
         with col12: btn_init=st.button("Memory Init", use_container_width=True, help="Initialize Multi-Turn Memory")
@@ -239,13 +285,16 @@ if __name__ == "__main__":
             st.session_state.prev_questions = []
         st.markdown("---")
 
-        service_type = st.radio("🐬 Services", options=["Open Chat", "Text Rag", "PDF Rag", "URL Rag"])
+        service_type = st.radio("🐬 **Services**", options=["Open Chat", "Text Rag", "PDF Rag", "URL Rag", "Image Rag"])
         st.markdown("")
         st.session_state.json_style = st.checkbox("Json Type Rag Response", value=True)
 
         st.markdown("---")
 
-        llm1 = st.radio("🐬 **Select LLM**", options=["Llama3.1(8B)", "Gemma2(9B)", "Llama3.1(70B)"], index=0, key="dsfv", help="Using Groq API")
+        if service_type == "Image Rag":
+            llm1 = st.radio("🐬 **Select LLM**", options=["Llava_v1.5(7B)"], index=0, key="dsfv", help="Using Groq API")
+        else: 
+            llm1 = st.radio("🐬 **Select LLM**", options=["Llama3.1(8B)", "Gemma2(9B)", "Llama3.1(70B)"], index=0, key="dsfv", help="Using Groq API")
         st.session_state.model_name = model_name_dict[llm1]
         st.warning(st.session_state.model_name)
         st.markdown("---")
@@ -253,7 +302,12 @@ if __name__ == "__main__":
 
     ## Main -----------------------------------------------------------------------------------------------
     st.title("🧭 :blue[AI Jarvis v1]")
-    st.checkbox("🐋 Wide Layout", key="center", value=st.session_state.get("center", False))
+    col31, col32 = st.columns(2)
+    with col31: st.checkbox("🐋 Wide Layout", key="center", value=st.session_state.get("center", False))
+    with col32: bg_check = st.checkbox("background Image", value=True)
+    if bg_check: apply_bg_image(main_bg, sidebar_bg)
+    else: pass
+
     st.markdown("---")
     
     if service_type == "Open Chat" and st.session_state.login_status:
@@ -426,6 +480,34 @@ if __name__ == "__main__":
             st.success(f"⏱️ Latency(Sec) : {np.round(st.session_state.rag_time_delta,2)}  /  Total Q&A Length(Char): {len(st.session_state.chat_history)}")
 
         pass 
+
+    elif service_type == "Image Rag" and st.session_state.login_status:
+        with st.expander("📎:green[**Upload Your Image**]", expanded=True):
+            parent_dir = Path(__file__).parent
+            base_dir = str(parent_dir) + "\image"
+            uploaded_file = st.file_uploader("", type=['jpg', 'png'])
+            btn2 = st.button("Save", type='secondary')
+            with st.spinner("processing..."):
+                if uploaded_file and btn2:
+                    if not os.path.exists(base_dir):
+                        os.makedirs(base_dir)
+                    files = os.listdir(base_dir)
+                    for file in files:
+                        file_path = os.path.join(base_dir, file)
+                        if os.path.isfile(file_path):
+                            os.remove(file_path)
+                    temp_dir = base_dir 
+                    st.session_state.file_path = os.path.join(temp_dir, uploaded_file.name)
+                    with open(st.session_state.file_path, "wb") as f:
+                            f.write(uploaded_file.getvalue())
+                    st.markdown(st.session_state.file_path)
+        try: st.image(st.session_state.file_path, width=600)
+        except: pass
+
+        text1 = st.text_input("Input your Query")
+        if st.button("Asking"):
+            res = image_chat(st.session_state.file_path, text1, st.session_state.model_name)
+            st.info(res)
 
     else: pass
     
