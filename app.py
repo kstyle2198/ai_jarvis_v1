@@ -5,30 +5,29 @@ sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 ### [종료 ] Delploy 할때만 실행되는 코드 #####################
 
 ###  pysqlite3-binary ---> requirements.txt 에 추가
-
-from datetime import datetime
+import os
+import random
+import base64
 import numpy as np
 from dotenv import load_dotenv
 import streamlit as st
-from streamlit_pills import pills
-import os
+from datetime import datetime
 from pathlib import Path
-import random
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.document_loaders import WebBaseLoader
-from langchain_groq import ChatGroq
-from langchain_core.prompts import ChatPromptTemplate
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings
-from langchain_core.output_parsers import StrOutputParser
-from langchain.chains import create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.vectorstores import Chroma
 from langchain_community.document_loaders import PyPDFLoader
-from groq import Groq
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.chains import create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
+
+from langchain_openai import OpenAIEmbeddings
+from langchain_groq import ChatGroq
+from groq import Groq
 
 ### Layout ------------------------------------------------------------------------------------
 if "center" not in st.session_state:
@@ -50,15 +49,11 @@ st.markdown(
         )
 
 
-
-import base64
 @st.fragment
 def get_img_as_base64(file):
     with open(file, "rb") as f:
         data = f.read()
     return base64.b64encode(data).decode()
-
-
 
 def apply_bg_image(main_bg, sidebar_bg):
     page_bg_img = f"""
@@ -90,6 +85,15 @@ def apply_bg_image(main_bg, sidebar_bg):
     """
     st.markdown(page_bg_img, unsafe_allow_html=True)
 
+parent_dir = Path(__file__).parent
+main_image_path = str(parent_dir) +"/main_images"
+sidebar_image_path = str(parent_dir) +"/sidebar_images"
+sidebar_image_list = [os.path.join(sidebar_image_path,f) for f in os.listdir(sidebar_image_path) if os.path.isfile(os.path.join(sidebar_image_path, f))]
+sidebar_img = random.choice(sidebar_image_list)
+main_image_list = [os.path.join(main_image_path,f) for f in os.listdir(main_image_path) if os.path.isfile(os.path.join(main_image_path, f))]
+main_img = random.choice(main_image_list)
+sidebar_bg = get_img_as_base64(f"{sidebar_img}")
+main_bg = get_img_as_base64(f"{main_img}")
 
 ### API KEY ------------------------------------------------------------------------
 load_dotenv()
@@ -134,7 +138,6 @@ def image_chat(image_path, text, model_name):
     )
     print(chat_completion.choices[0].message.content)
     return chat_completion.choices[0].message.content
-
 
 def open_chat(query, model_name):
     model = ChatGroq(temperature=0, model_name= model_name)   # "llama-3.1-8b-instant","llama-guard-3-8b", "gemma2-9b-it","llama-3.1-70b-versatile",
@@ -216,8 +219,6 @@ def quick_rag_chat(query, retriever, model_name, json_style:bool):
     response = rag_chain.invoke({"input": f"{query}"})
     return response["context"], response["answer"]
 
-
-    
 ### Variables ---------------------------------------------------------------------------------------------
 model_name_dict = {"Llama3.1(8B)":"llama-3.1-8b-instant", 
                    "Gemma2(9B)":"gemma2-9b-it", 
@@ -228,10 +229,12 @@ if "login_status" not in st.session_state: st.session_state.login_status = False
 if "json_style" not in st.session_state: st.session_state.json_style = True
 if "time_delta" not in st.session_state: st.session_state.time_delta = ""
 if "rag_time_delta" not in st.session_state: st.session_state.rag_time_delta = ""
+
 if "messages" not in st.session_state: st.session_state.messages = [{"role": "assistant", "content": "How can I help you?"}]
-if "rag_messages" not in st.session_state: st.session_state.rag_messages = [{"role": "assistant", "content": "How can I help you?"}]
+if "rag_messages_text" not in st.session_state: st.session_state.rag_messages_text = [{"role": "assistant", "content": "How can I help you?"}]
 if "rag_messages_pdf" not in st.session_state: st.session_state.rag_messages_pdf = [{"role": "assistant", "content": "How can I help you?"}]
 if "rag_messages_url" not in st.session_state: st.session_state.rag_messages_url = [{"role": "assistant", "content": "How can I help you?"}]
+
 if "chat_history" not in st.session_state: st.session_state.chat_history = ""
 if "model_name" not in st.session_state: st.session_state.model_name = ""
 if "file_path" not in st.session_state: st.session_state.file_path = ""
@@ -245,6 +248,7 @@ if "retrieval_docs_pdf" not in st.session_state: st.session_state.retrieval_docs
 if "retrieval_docs_url" not in st.session_state: st.session_state.retrieval_docs_url = ""
 
 if "prev_questions" not in st.session_state: st.session_state.prev_questions = []
+if "img_answer" not in st.session_state: st.session_state.img_answer = ""
 
 example_text = '''
 example text:
@@ -255,12 +259,11 @@ The BIS published the rule regarding regulations on export items under four cate
 
 if __name__ == "__main__":
     
-
     ### Sidebar -----------------------------------------------------------------------------------------------------
     with st.sidebar:
         
         st.title("⚓ :gray[Menu]")
-        st.subheader("AI Assistance for you")
+        st.subheader("AI Assistant for you")
         st.markdown("")
 
         password = st.text_input("🔑 **Password**", type="password")
@@ -278,46 +281,27 @@ if __name__ == "__main__":
             st.session_state.chat_history = ""
             st.session_state.prev_questions = []
         st.markdown("---")
-
         service_type = st.radio("🐬 **Services**", options=["Open Chat", "Text Rag", "PDF Rag", "URL Rag", "Image Rag"])
-        st.markdown("")
-        st.session_state.json_style = st.checkbox("Json Type Rag Response", value=True)
-
+        
         st.markdown("---")
 
         if service_type == "Image Rag":
             llm1 = st.radio("🐬 **Select LLM**", options=["Llava_v1.5(7B)"], index=0, key="dsfv", help="Using Groq API")
         else: 
             llm1 = st.radio("🐬 **Select LLM**", options=["Llama3.1(8B)", "Gemma2(9B)", "Llama3.1(70B)"], index=0, key="dsfv", help="Using Groq API")
+            st.markdown("")
+            st.session_state.json_style = st.checkbox("Json Type Rag Response", value=True)
         st.session_state.model_name = model_name_dict[llm1]
         st.warning(st.session_state.model_name)
         st.markdown("---")
 
-
     ## Main -----------------------------------------------------------------------------------------------
-
-    parent_dir = Path(__file__).parent
-    main_image_path = str(parent_dir) +"/main_images"
-    sidebar_image_path = str(parent_dir) +"/sidebar_images"
-    # if not os.path.exists(main_image_path):
-    #     os.makedirs(main_image_path)
-    # if not os.path.exists(sidebar_image_path):
-    #     os.makedirs(sidebar_image_path)
-    sidebar_image_list = [os.path.join(sidebar_image_path,f) for f in os.listdir(sidebar_image_path) if os.path.isfile(os.path.join(sidebar_image_path, f))]
-    sidebar_img = random.choice(sidebar_image_list)
-    main_image_list = [os.path.join(main_image_path,f) for f in os.listdir(main_image_path) if os.path.isfile(os.path.join(main_image_path, f))]
-    main_img = random.choice(main_image_list)
-    sidebar_bg = get_img_as_base64(f"{sidebar_img}")
-    main_bg = get_img_as_base64(f"{main_img}")
-
-
     st.title("🧭 :blue[AI Jarvis v1]")
     col31, col32 = st.columns(2)
     with col31: st.checkbox("🐋 Wide Layout", key="center", value=st.session_state.get("center", False))
     with col32: bg_check = st.checkbox("background Image", value=True)
     if bg_check: apply_bg_image(main_bg, sidebar_bg)
     else: pass
-
     st.markdown("---")
     
     if service_type == "Open Chat" and st.session_state.login_status:
@@ -368,15 +352,15 @@ if __name__ == "__main__":
         if text_input2:
             st.session_state.chat_history = st.session_state.chat_history + "\n" + text_input2 + "\n"
             rag_start_time = datetime.now()
-            st.session_state.rag_messages.append({"role": "user", "content": text_input2})
+            st.session_state.rag_messages_text.append({"role": "user", "content": text_input2})
             retrieval_docs, output2 = quick_rag_chat(text_input2, st.session_state.retriever_text, st.session_state.model_name, st.session_state.json_style)
-            st.session_state.rag_messages.append({"role": "assistant", "content": output2})
+            st.session_state.rag_messages_text.append({"role": "assistant", "content": output2})
             st.session_state.retrieval_docs_text = retrieval_docs
             rag_end_time = datetime.now()
             st.session_state.rag_time_delta = calculate_time_delta(rag_start_time, rag_end_time)
             st.session_state.chat_history = st.session_state.chat_history + "\n" + output2 + "\n"
             
-        for msg in st.session_state.rag_messages:
+        for msg in st.session_state.rag_messages_text:
             if msg["role"] == "user":
                 st.chat_message(msg["role"], avatar="🐬").write(msg["content"])
             else:
@@ -390,10 +374,8 @@ if __name__ == "__main__":
         try:
             if text_input2 and text_input2 not in st.session_state.prev_questions:
                 st.session_state.prev_questions.append(text_input2)
-                # selected = pills("Previous Questions", st.session_state.prev_questions)
             else: 
                 pass
-                # selected = pills("Previous Questions", st.session_state.prev_questions)
         except: pass
     
     elif service_type == "PDF Rag" and st.session_state.login_status:
@@ -516,8 +498,9 @@ if __name__ == "__main__":
 
         text1 = st.text_input("Input your Query")
         if st.button("Asking"):
-            res = image_chat(st.session_state.file_path, text1, st.session_state.model_name)
-            st.info(res)
+            st.session_state.img_answer = image_chat(st.session_state.file_path, text1, st.session_state.model_name)
+        
+        st.info(st.session_state.img_answer)
 
     else: pass
     
