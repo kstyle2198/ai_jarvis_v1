@@ -299,6 +299,10 @@ if __name__ == "__main__":
 
     main_image_path = ".\main_images"
     sidebar_image_path = ".\sidebar_images"
+    if not os.path.exists(main_image_path):
+        os.makedirs(main_image_path)
+    if not os.path.exists(sidebar_image_path):
+        os.makedirs(sidebar_image_path)
     sidebar_image_list = [os.path.join(sidebar_image_path,f) for f in os.listdir(sidebar_image_path) if os.path.isfile(os.path.join(sidebar_image_path, f))]
     sidebar_img = random.choice(sidebar_image_list)
     main_image_list = [os.path.join(main_image_path,f) for f in os.listdir(main_image_path) if os.path.isfile(os.path.join(main_image_path, f))]
