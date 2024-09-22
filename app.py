@@ -296,19 +296,20 @@ if __name__ == "__main__":
 
     ## Main -----------------------------------------------------------------------------------------------
 
-
-    main_image_path = ".\main_images"
-    sidebar_image_path = ".\sidebar_images"
-    if not os.path.exists(main_image_path):
-        os.makedirs(main_image_path)
-    if not os.path.exists(sidebar_image_path):
-        os.makedirs(sidebar_image_path)
+    parent_dir = Path(__file__).parent
+    main_image_path = str(parent_dir) +"\main_images"
+    sidebar_image_path = str(parent_dir) +"\sidebar_images"
+    # if not os.path.exists(main_image_path):
+    #     os.makedirs(main_image_path)
+    # if not os.path.exists(sidebar_image_path):
+    #     os.makedirs(sidebar_image_path)
     sidebar_image_list = [os.path.join(sidebar_image_path,f) for f in os.listdir(sidebar_image_path) if os.path.isfile(os.path.join(sidebar_image_path, f))]
     sidebar_img = random.choice(sidebar_image_list)
     main_image_list = [os.path.join(main_image_path,f) for f in os.listdir(main_image_path) if os.path.isfile(os.path.join(main_image_path, f))]
     main_img = random.choice(main_image_list)
     sidebar_bg = get_img_as_base64(f"{sidebar_img}")
     main_bg = get_img_as_base64(f"{main_img}")
+
 
     st.title("🧭 :blue[AI Jarvis v1]")
     col31, col32 = st.columns(2)
