@@ -49,12 +49,7 @@ st.markdown(
             unsafe_allow_html=True,
         )
 
-main_image_path = ".\main_images"
-sidebar_image_path = ".\sidebar_images"
-sidebar_image_list = [os.path.join(sidebar_image_path,f) for f in os.listdir(sidebar_image_path) if os.path.isfile(os.path.join(sidebar_image_path, f))]
-sidebar_img = random.choice(sidebar_image_list)
-main_image_list = [os.path.join(main_image_path,f) for f in os.listdir(main_image_path) if os.path.isfile(os.path.join(main_image_path, f))]
-main_img = random.choice(main_image_list)
+
 
 import base64
 @st.fragment
@@ -63,8 +58,7 @@ def get_img_as_base64(file):
         data = f.read()
     return base64.b64encode(data).decode()
 
-sidebar_bg = get_img_as_base64(f"{sidebar_img}")
-main_bg = get_img_as_base64(f"{main_img}")
+
 
 def apply_bg_image(main_bg, sidebar_bg):
     page_bg_img = f"""
@@ -301,6 +295,17 @@ if __name__ == "__main__":
 
 
     ## Main -----------------------------------------------------------------------------------------------
+
+
+    main_image_path = ".\main_images"
+    sidebar_image_path = ".\sidebar_images"
+    sidebar_image_list = [os.path.join(sidebar_image_path,f) for f in os.listdir(sidebar_image_path) if os.path.isfile(os.path.join(sidebar_image_path, f))]
+    sidebar_img = random.choice(sidebar_image_list)
+    main_image_list = [os.path.join(main_image_path,f) for f in os.listdir(main_image_path) if os.path.isfile(os.path.join(main_image_path, f))]
+    main_img = random.choice(main_image_list)
+    sidebar_bg = get_img_as_base64(f"{sidebar_img}")
+    main_bg = get_img_as_base64(f"{main_img}")
+
     st.title("🧭 :blue[AI Jarvis v1]")
     col31, col32 = st.columns(2)
     with col31: st.checkbox("🐋 Wide Layout", key="center", value=st.session_state.get("center", False))
