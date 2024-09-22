@@ -13,16 +13,20 @@ from dotenv import load_dotenv
 import streamlit as st
 from datetime import datetime
 from pathlib import Path
+from pydantic.v1 import BaseModel, Field
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_community.vectorstores import Chroma
 from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.tools.yahoo_finance_news import YahooFinanceNewsTool
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-
+from langchain.agents import AgentType, initialize_agent
+from langchain.agents import Tool
+from langchain.globals import set_debug
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.chains import create_retrieval_chain
+from langchain.chains import create_retrieval_chain, RetrievalQA
 from langchain.chains.combine_documents import create_stuff_documents_chain
 
 from langchain_openai import OpenAIEmbeddings
@@ -219,6 +223,66 @@ def quick_rag_chat(query, retriever, model_name, json_style:bool):
     response = rag_chain.invoke({"input": f"{query}"})
     return response["context"], response["answer"]
 
+class DocumentInput(BaseModel):
+    question: str = Field()
+
+def documents_comparison_agent(doc1_path, doc2_path, model_name, user_query):
+    llm = ChatGroq(temperature=0, model_name= model_name)
+    doc1 = os.path.splitext(os.path.basename(doc1_path))[0]
+    doc2 = os.path.splitext(os.path.basename(doc2_path))[0]
+
+    tools = []
+    files = [
+        {
+            "name": doc1,
+            "path": doc1_path,
+        },
+        {
+            "name": doc2,
+            "path": doc2_path,
+        },
+    ]
+
+    embeddings_model = OpenAIEmbeddings()
+
+    for file in files:
+        loader = PyPDFLoader(file["path"])
+        pages = loader.load_and_split()
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+        docs = text_splitter.split_documents(pages)
+
+        try:
+            vectordb = Chroma(persist_directory="chroma_db_comparison", embedding_function=OpenAIEmbeddings())
+            vectordb._client.delete_collection(vectordb._collection.name)
+        except: pass
+
+        vectorstore = Chroma.from_documents(docs, embeddings_model, persist_directory="./chroma_db_comparison")
+        retriever = vectorstore.as_retriever()
+        
+        tools.append(
+            Tool(
+                args_schema=DocumentInput,
+                name=file["name"],
+                description=f"useful when you want to answer questions about {file['name']}",
+                func=RetrievalQA.from_chain_type(llm=llm, retriever=retriever),
+            )
+        )
+
+    # set_debug(True)
+    # Initialize the agent using ChatGroq
+    agent = initialize_agent(
+        agent=AgentType.OPENAI_FUNCTIONS,  # Adjust as needed for Groq's specific agent type
+        tools=tools,
+        llm=llm,
+        verbose=True,
+    )
+    
+    # Ask a question to the agent
+    response_dict = agent({"input": user_query})
+    response = response_dict["output"]
+    return response
+
+
 ### Variables ---------------------------------------------------------------------------------------------
 model_name_dict = {"Llama3.1(8B)":"llama-3.1-8b-instant", 
                    "Gemma2(9B)":"gemma2-9b-it", 
@@ -238,6 +302,8 @@ if "rag_messages_url" not in st.session_state: st.session_state.rag_messages_url
 if "chat_history" not in st.session_state: st.session_state.chat_history = ""
 if "model_name" not in st.session_state: st.session_state.model_name = ""
 if "file_path" not in st.session_state: st.session_state.file_path = ""
+if "file_path1" not in st.session_state: st.session_state.file_path1 = ""
+if "file_path2" not in st.session_state: st.session_state.file_path2 = ""
 
 if "retriever_text" not in st.session_state: st.session_state.retriever_text = ""
 if "retriever_pdf" not in st.session_state: st.session_state.retriever_pdf = ""
@@ -249,6 +315,7 @@ if "retrieval_docs_url" not in st.session_state: st.session_state.retrieval_docs
 
 if "prev_questions" not in st.session_state: st.session_state.prev_questions = []
 if "img_answer" not in st.session_state: st.session_state.img_answer = ""
+if "comparison_result" not in st.session_state: st.session_state.comparison_result = ""
 
 example_text = '''
 example text:
@@ -281,7 +348,7 @@ if __name__ == "__main__":
             st.session_state.chat_history = ""
             st.session_state.prev_questions = []
         st.markdown("---")
-        service_type = st.radio("🐬 **Services**", options=["Open Chat", "Text Rag", "PDF Rag", "URL Rag", "Image Rag"])
+        service_type = st.radio("🐬 **Services**", options=["Open Chat", "Text Rag", "PDF Rag", "URL Rag", "Image Rag", "Documents Comparison Agent"])
         
         st.markdown("---")
 
@@ -338,7 +405,7 @@ if __name__ == "__main__":
         with st.expander("Quick Reference Texts", expanded=True): 
             context_input = st.text_area("", example_text, key="uyhv", height=200)
             with st.spinner("Processing.."):
-                if st.button("Create Retriever"):
+                if st.button("Create Retriever", key="23423sf"):
                     try:
                         vectordb = Chroma(persist_directory="chroma_db_text", embedding_function=OpenAIEmbeddings())
                         vectordb._client.delete_collection(vectordb._collection.name)
@@ -382,8 +449,8 @@ if __name__ == "__main__":
         with st.expander("📎:green[**Upload Your PDF**]", expanded=True):
             parent_dir = Path(__file__).parent
             base_dir = str(parent_dir) + "\data"
-            uploaded_file = st.file_uploader("", type=['PDF', 'pdf'])
-            btn1 = st.button("Create PDF Retreiver", type='secondary')
+            uploaded_file = st.file_uploader("", type=['PDF', 'pdf'], key="sdfd1")
+            btn1 = st.button("Create Retreiver", type='secondary', key="we234")
             try:
                 with st.spinner("processing..."):
                     if uploaded_file and btn1:
@@ -436,7 +503,7 @@ if __name__ == "__main__":
 
     elif service_type == "URL Rag" and st.session_state.login_status:
         url = st.text_input("🕸️ :green[**URL**]")
-        btn3 = st.button("Create Retriever3")
+        btn3 = st.button("Create Retriever", key="24s34")
         if url and btn3:
             loader = WebBaseLoader(url)
             docs = loader.load()
@@ -446,7 +513,6 @@ if __name__ == "__main__":
             except: pass
             st.session_state.retriever_url = make_retriever_from_url(docs)
         st.info(st.session_state.retriever_url)
-
 
         text_input4 = st.chat_input("Say something")
         if text_input4:
@@ -478,7 +544,7 @@ if __name__ == "__main__":
             parent_dir = Path(__file__).parent
             base_dir = str(parent_dir) + "\image"
             uploaded_file = st.file_uploader("", type=['jpg', 'png'])
-            btn2 = st.button("Save", type='secondary')
+            btn2 = st.button("Image Save", type='secondary')
             with st.spinner("processing..."):
                 if uploaded_file and btn2:
                     if not os.path.exists(base_dir):
@@ -501,6 +567,49 @@ if __name__ == "__main__":
             st.session_state.img_answer = image_chat(st.session_state.file_path, text1, st.session_state.model_name)
         
         st.info(st.session_state.img_answer)
+
+    elif service_type == "Documents Comparison Agent" and st.session_state.login_status:
+
+        parent_dir = Path(__file__).parent
+        base_dir = str(parent_dir) + "\documents"
+        with st.expander("📎 Upload Comparing Two Documents", expanded=True):
+            col51, col52 = st.columns(2)
+            with col51: uploaded_file1 = st.file_uploader("", type=['PDF', 'pdf'], key="sdfsdfd1")
+            with col52: uploaded_file2 = st.file_uploader("", type=['PDF', 'pdf'], key="ssdfdfd1")
+
+        btn1 = st.button("Save Documents", type='secondary', key="we234")
+        try:
+            with st.spinner("processing..."):
+                if uploaded_file1 and uploaded_file2 and btn1:
+                    st.session_state.retrieval_docs_pdf = ""
+                    if not os.path.exists(base_dir):
+                        os.makedirs(base_dir)
+
+                    files = os.listdir(base_dir)
+                    for file in files:
+                        file_path = os.path.join(base_dir, file)
+                        if os.path.isfile(file_path):
+                            os.remove(file_path)
+
+                    temp_dir = base_dir 
+                    st.session_state.file_path1 = os.path.join(temp_dir, uploaded_file1.name)
+                    st.session_state.file_path2 = os.path.join(temp_dir, uploaded_file2.name)
+
+                    with open(st.session_state.file_path1, "wb") as f:
+                        f.write(uploaded_file1.getvalue())
+                    with open(st.session_state.file_path2, "wb") as f:
+                        f.write(uploaded_file2.getvalue())
+                    st.warning("File Upload Completion")
+        except: pass
+
+        user_query = st.text_input("Query", key="23dssdf", placeholder="what is the main difference in specification")
+        if st.session_state.json_style:
+            user_query = user_query + " Please provide your answer in JSON format and The JSON must be a valid json format and can be read with json.loads() in Python."
+        with st.spinner("Processing..."):
+            if st.button("Asking", key="32rffs"):
+                st.session_state.comparison_result = documents_comparison_agent(st.session_state.file_path1, st.session_state.file_path2, st.session_state.model_name, user_query)
+        
+        st.info(st.session_state.comparison_result)
 
     else: pass
     
