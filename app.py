@@ -1,7 +1,7 @@
 ### [시작] Delploy 할때만 실행되는 코드 #####################
-__import__('pysqlite3')
-import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+# __import__('pysqlite3')
+# import sys
+# sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 ### [종료 ] Delploy 할때만 실행되는 코드 #####################
 
 ###  pysqlite3-binary ---> requirements.txt 에 추가
@@ -284,10 +284,16 @@ def documents_comparison_agent(doc1_path, doc2_path, model_name, user_query):
 
 
 ### Variables ---------------------------------------------------------------------------------------------
-model_name_dict = {"Llama3.1(8B)":"llama-3.1-8b-instant", 
-                   "Gemma2(9B)":"gemma2-9b-it", 
-                   "Llama3.1(70B)":"llama-3.1-70b-versatile",
-                   "Llava_v1.5(7B)":"llava-v1.5-7b-4096-preview"}
+model_name_dict = {
+    "Llama3.2(1B)":"llama-3.2-1b-preview",
+    "Llama3.2(3B)":"llama-3.2-3b-preview",
+    "Llama3.2(11B)":"llama-3.2-11b-text-preview",
+    "Llama3.2(90B)":"llama-3.2-90b-text-preview",
+    "Llama3.1(8B)":"llama-3.1-8b-instant", 
+    "Gemma2(9B)":"gemma2-9b-it", 
+    "Llama3.1(70B)":"llama-3.1-70b-versatile",
+    "Llava_v1.5(7B)":"llava-v1.5-7b-4096-preview",
+    "Llama_v3.2(11B)":"llama-3.2-11b-vision-preview"}
 
 if "login_status" not in st.session_state: st.session_state.login_status = False
 if "json_style" not in st.session_state: st.session_state.json_style = True
@@ -353,9 +359,9 @@ if __name__ == "__main__":
         st.markdown("---")
 
         if service_type == "Image Rag":
-            llm1 = st.radio("🐬 **Select LLM**", options=["Llava_v1.5(7B)"], index=0, key="dsfv", help="Using Groq API")
+            llm1 = st.radio("🐬 **Select LLM**", options=["Llama_v3.2(11B)", "Llava_v1.5(7B)"], index=0, key="dsfv", help="Using Groq API")
         else: 
-            llm1 = st.radio("🐬 **Select LLM**", options=["Llama3.1(8B)", "Gemma2(9B)", "Llama3.1(70B)"], index=0, key="dsfv", help="Using Groq API")
+            llm1 = st.radio("🐬 **Select LLM**", options=["Llama3.2(1B)", "Llama3.2(3B)", "Llama3.2(11B)", "Llama3.2(90B)", "Llama3.1(70B)"], index=0, key="dsfv", help="Using Groq API")
             st.markdown("")
             st.session_state.json_style = st.checkbox("Json Type Rag Response", value=True)
         st.session_state.model_name = model_name_dict[llm1]
