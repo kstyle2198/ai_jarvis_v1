@@ -1,7 +1,7 @@
 ### [시작] Delploy 할때만 실행되는 코드 #####################
-# __import__('pysqlite3')
-# import sys
-# sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 ### [종료 ] Delploy 할때만 실행되는 코드 #####################
 
 ###  pysqlite3-binary ---> requirements.txt 에 추가
@@ -22,7 +22,7 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.tools.yahoo_finance_news import YahooFinanceNewsTool
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain.agents import AgentType, initialize_agent
+from langchain.agents import AgentType, initialize_agent, create_structured_chat_agent
 from langchain.agents import Tool
 from langchain.globals import set_debug
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -228,8 +228,8 @@ class DocumentInput(BaseModel):
 
 def documents_comparison_agent(doc1_path, doc2_path, model_name, user_query):
     llm = ChatGroq(temperature=0, model_name= model_name)
-    doc1 = os.path.splitext(os.path.basename(doc1_path))[0]
-    doc2 = os.path.splitext(os.path.basename(doc2_path))[0]
+    doc1 = os.path.splitext(os.path.basename(doc1_path))[0]  # get file name
+    doc2 = os.path.splitext(os.path.basename(doc2_path))[0]  # get file name
 
     tools = []
     files = [
@@ -251,6 +251,7 @@ def documents_comparison_agent(doc1_path, doc2_path, model_name, user_query):
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
         docs = text_splitter.split_documents(pages)
 
+
         try:
             vectordb = Chroma(persist_directory="chroma_db_comparison", embedding_function=OpenAIEmbeddings())
             vectordb._client.delete_collection(vectordb._collection.name)
@@ -268,15 +269,18 @@ def documents_comparison_agent(doc1_path, doc2_path, model_name, user_query):
             )
         )
 
-    # set_debug(True)
+    set_debug(True)
     # Initialize the agent using ChatGroq
     agent = initialize_agent(
         agent=AgentType.OPENAI_FUNCTIONS,  # Adjust as needed for Groq's specific agent type
         tools=tools,
         llm=llm,
+        max_iteration=10,
         verbose=True,
     )
+
     
+
     # Ask a question to the agent
     response_dict = agent({"input": user_query})
     response = response_dict["output"]
